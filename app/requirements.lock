@@ -1,0 +1,10 @@
+# Locked by environment-spec/03: 与云镜像 rocm-pytorch 对等的本地/Docker 依赖基线
+# 打开后用 `pip freeze > requirements.lock` 更新为精确版本（上传云后仍用同一份）
+transformers>=4.46
+peft>=0.13
+trl>=0.10
+datasets>=3.0
+accelerate>=0.34
+torch==2.10.0+rocm7.2.4
+huggingface_hub>=0.26
+safetensors>=0.4

@@ -1,0 +1,22 @@
+name = "reap"
+defaultTargets = ["Reap"]
+
+[leanOptions]
+pp.unicode.fun = true
+experimental.module = true
+
+[[require]]
+name = "openAI_client"
+git = "https://github.com/frenzymath/openai_client.git"
+rev = "main"
+
+[[require]]
+name = "batteries"
+scope = "leanprover-community"
+rev = "main"
+
+[[lean_lib]]
+name = "Reap"
+
+[[lean_lib]]
+name = "Reap.Test"

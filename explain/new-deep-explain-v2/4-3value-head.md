@@ -1,0 +1,1443 @@
+Yes. If you already have a trained LLM policy
+
+$$
+\pi_\theta(a\mid s)
+$$
+
+and the CPU side provides
+
+$$
+\text{MCTS}+\text{Lean},
+$$
+
+then the cleanest way to train the value head is to treat **Lean-verified proof trajectories and MCTS outcomes as supervision for a scalar critic**.
+
+I would implement it in **three stages**, with Stage 1 being almost trivial and Stage 2 being the important one.
+
+---
+
+## 1. Define the value target precisely
+
+Let a proof trajectory be
+
+$$
+s_0\xrightarrow{a_0}s_1
+\xrightarrow{a_1}\cdots
+\xrightarrow{a_{T-1}}s_T,
+$$
+
+where \(s_T\) is a proved state.
+
+If your reward is
+
+$$
+r_t=-1
+$$
+
+for every successful proof step, and
+
+$$
+r_T=0,
+$$
+
+then the return from \(s_t\) is
+
+$$
+G_t
+=
+\sum_{k=t}^{T-1}-1
+=
+-(T-t).
+$$
+
+Therefore the simplest value target is
+
+$$
+\boxed{
+z_t=-(T-t)
+}
+$$
+
+and the value network should learn
+
+$$
+\boxed{
+V_\phi(s_t)\approx -(T-t).
+}
+$$
+
+Here \(V_\phi\) is just your LLM plus a scalar head.
+
+---
+
+# 2. Architecture
+
+Suppose your policy LLM is
+
+$$
+h=f_\theta(s)
+$$
+
+where \(h\in\mathbb R^d\) is the hidden representation of the Lean proof state.
+
+You can attach:
+
+$$
+V_\phi(s)
+=
+w_v^\top h+b_v.
+$$
+
+So the network is
+
+```text
+Lean proof state
+       │
+       ▼
+   LLM backbone
+       │
+       ▼
+ hidden state h
+       │
+       ├──────────────► policy head
+       │                    │
+       │                    ▼
+       │              π(a | s)
+       │
+       └──────────────► value head
+                            │
+                            ▼
+                         V(s)
+```
+
+The value head has only
+
+$$
+d+1
+$$
+
+parameters.
+
+For example, if \(d=4096\), it has only 4097 parameters.
+
+---
+
+# 3. Stage 1 — initialize the value head from existing proofs
+
+This is what I would do **before involving MCTS**.
+
+You need a collection of successful Lean proofs.
+
+For each proof:
+
+$$
+s_0,\ldots,s_T,
+$$
+
+construct:
+
+$$
+\mathcal D_V
+=
+\{(s_t,-(T-t))\}_{t=0}^{T}.
+$$
+
+For example:
+
+```text
+state                         target
+
+s0                            -8
+s1                            -7
+s2                            -6
+...
+s7                            -1
+s8                             0
+```
+
+Then optimize
+
+$$
+\boxed{
+L_V(\phi)
+=
+\frac1N
+\sum_{i=1}^{N}
+\left(
+V_\phi(s_i)-z_i
+\right)^2
+}
+$$
+
+with respect to the value head.
+
+Initially, I would **freeze the LLM**:
+
+$$
+\theta=\text{constant}
+$$
+
+and train only
+
+$$
+\phi=(w_v,b_v).
+$$
+
+This gives you an extremely cheap value initialization.
+
+---
+
+# 4. You don't actually need to train on all proof states equally
+
+There is an important issue here.
+
+Suppose a proof has 500 tactics.
+
+Then your dataset contains:
+
+$$
+500
+$$
+
+states from one theorem.
+
+A naïve dataset therefore heavily weights long proofs.
+
+You can instead sample states approximately uniformly over theorems:
+
+$$
+P(\text{theorem})=\frac1N
+$$
+
+and then sample:
+
+$$
+t\sim\operatorname{Uniform}(0,T).
+$$
+
+This prevents long proofs from dominating training.
+
+---
+
+# 5. What if you don't have human proofs?
+
+Then MCTS itself can generate your value-training data.
+
+Your CPU system does:
+
+$$
+\boxed{
+\text{MCTS}(s)
+\rightarrow
+\text{Lean}
+\rightarrow
+\text{proof trajectory}
+}
+$$
+
+Whenever MCTS finds:
+
+$$
+s_t\rightarrow\cdots\rightarrow s_T,
+$$
+
+you get:
+
+$$
+z_t=-(T-t).
+$$
+
+Add
+
+$$
+(s_t,z_t)
+$$
+
+to your replay buffer.
+
+Thus:
+
+$$
+\boxed{
+\text{MCTS is simultaneously a search algorithm and a data generator}.
+}
+$$
+
+This is the key transition from supervised initialization to self-improvement.
+
+---
+
+# 6. Stage 2 — use MCTS to generate better value targets
+
+This is where things become substantially more interesting.
+
+Suppose the root is:
+
+$$
+s_0.
+$$
+
+MCTS explores:
+
+$$
+s_0
+\rightarrow
+s_1
+\rightarrow
+s_2
+\rightarrow\cdots
+$$
+
+and eventually obtains a collection of successful and unsuccessful trajectories.
+
+For every visited state \(s\), MCTS can estimate:
+
+$$
+\hat V_{\mathrm{MCTS}}(s).
+$$
+
+Then train the neural value function toward that estimate:
+
+$$
+\boxed{
+L_V
+=
+\left(
+V_\phi(s)-\hat V_{\mathrm{MCTS}}(s)
+\right)^2.
+}
+$$
+
+This is essentially **value distillation from search**.
+
+---
+
+# 7. But what exactly is the MCTS value?
+
+This needs to be specified carefully.
+
+Suppose at state \(s\), MCTS performs \(N(s)\) simulations.
+
+For each simulation \(i\), let its terminal return be
+
+$$
+G_i.
+$$
+
+Then a simple estimate is
+
+$$
+\boxed{
+\hat V_{\mathrm{MCTS}}(s)
+=
+\frac1{N(s)}
+\sum_{i=1}^{N(s)}G_i.
+}
+$$
+
+If successful trajectories have reward
+
+$$
+-\text{proof length},
+$$
+
+then this estimates expected proof cost under the searched policy.
+
+However, **I would not blindly use this as the only target**.
+
+MCTS contains both:
+
+* neural value estimates;
+* terminal Lean results;
+* search backup estimates.
+
+Therefore the target is partially generated by the same network you're trying to train.
+
+That can create self-reinforcing errors.
+
+---
+
+# 8. Better: distinguish terminal targets from bootstrap targets
+
+Suppose MCTS reaches:
+
+$$
+s_L
+$$
+
+and Lean confirms success after \(k\) remaining steps.
+
+Then this is a very high-quality target:
+
+$$
+z=-k.
+$$
+
+Call this a **verified target**.
+
+By contrast, if MCTS stops at a leaf because the search budget is exhausted and uses:
+
+$$
+V_\phi(s_L),
+$$
+
+then this is only a bootstrap target.
+
+So I would maintain:
+
+$$
+\mathcal D_{\mathrm{verified}}
+$$
+
+and
+
+$$
+\mathcal D_{\mathrm{bootstrap}}.
+$$
+
+And weight them differently:
+
+$$
+L_V
+=
+\lambda_{\mathrm{verified}}L_{\mathrm{verified}}
++
+\lambda_{\mathrm{bootstrap}}L_{\mathrm{bootstrap}},
+$$
+
+with
+
+$$
+\lambda_{\mathrm{verified}}
+>
+\lambda_{\mathrm{bootstrap}}.
+$$
+
+---
+
+# 9. The most useful target may actually be success probability
+
+For theorem proving, there is another value definition I strongly recommend experimenting with.
+
+Instead of
+
+$$
+V(s)=-\text{remaining steps},
+$$
+
+define
+
+$$
+\boxed{
+V_{\mathrm{succ}}(s)
+=
+P(\text{Lean proof eventually succeeds}\mid s).
+}
+$$
+
+Then:
+
+$$
+V_{\mathrm{succ}}(s)\in[0,1].
+$$
+
+Your target is simply:
+
+$$
+z=
+\begin{cases}
+1 & \text{if proof succeeds},\\
+0 & \text{if search terminates unsuccessfully}.
+\end{cases}
+$$
+
+and you use BCE:
+
+$$
+L_V
+=
+-z\log V_\phi(s)
+-(1-z)\log(1-V_\phi(s)).
+$$
+
+This is often easier to stabilize.
+
+---
+
+# 10. But there is a subtle problem with unsuccessful MCTS
+
+Suppose MCTS fails to prove
+
+$$
+P
+$$
+
+within 10,000 simulations.
+
+That does **not** mean:
+
+$$
+P(\text{proof exists}\mid s)=0.
+$$
+
+It only means:
+
+$$
+\text{MCTS}_{B}(s)
+$$
+
+did not find a proof under budget \(B\).
+
+Therefore:
+
+$$
+\boxed{
+\text{search failure}\neq\text{theorem impossibility}.
+}
+$$
+
+This is extremely important.
+
+You should not automatically assign
+
+$$
+V(s)=0
+$$
+
+to every state where search failed.
+
+Instead, unsuccessful states are **censored observations**.
+
+This is one reason why remaining-step regression from successful trajectories is attractive.
+
+---
+
+# 11. A robust target formulation
+
+For a first serious implementation, I would use **two heads**:
+
+$$
+V_L(s)
+$$
+
+= expected remaining proof length conditional on success,
+
+and
+
+$$
+V_S(s)
+$$
+
+= probability of eventual success.
+
+Thus:
+
+$$
+\boxed{
+V(s)=
+\left(
+V_S(s),V_L(s)
+\right).
+}
+$$
+
+Training:
+
+$$
+L
+=
+\lambda_S L_S
++
+\lambda_L L_L.
+$$
+
+Where:
+
+$$
+L_S=\operatorname{BCE}(V_S,y)
+$$
+
+and
+
+$$
+L_L=
+\operatorname{Huber}(V_L,-d).
+$$
+
+Then MCTS knows both:
+
+$$
+\text{“How likely am I to succeed?”}
+$$
+
+and
+
+$$
+\text{“If I succeed, how far away am I?”}
+$$
+
+---
+
+# 12. Stage 3 — joint policy/value training
+
+Once your value head is reasonable, you can let MCTS generate training data for both networks.
+
+For every root state \(s\), MCTS produces:
+
+$$
+N(s,a)
+$$
+
+for each action.
+
+Convert visit counts into a search policy:
+
+$$
+\boxed{
+\pi_{\mathrm{MCTS}}(a\mid s)
+=
+\frac{N(s,a)^{1/\tau}}
+{\sum_b N(s,b)^{1/\tau}}.
+}
+$$
+
+Then train your LLM policy toward:
+
+$$
+\pi_{\mathrm{MCTS}}.
+$$
+
+The policy loss is:
+
+$$
+L_\pi
+=
+-\sum_a
+\pi_{\mathrm{MCTS}}(a\mid s)
+\log\pi_\theta(a\mid s).
+$$
+
+At the same time:
+
+$$
+L_V
+=
+(V_\phi(s)-z)^2.
+$$
+
+Therefore:
+
+$$
+\boxed{
+L
+=
+\lambda_\pi L_\pi
++
+\lambda_V L_V.
+}
+$$
+
+Now your complete learning loop is:
+
+```text
+             ┌──────────────┐
+             │  LLM policy  │
+             │     πθ       │
+             └──────┬───────┘
+                    │
+                    ▼
+              ┌───────────┐
+              │   MCTS    │
+              └─────┬─────┘
+                    │
+                    ▼
+                ┌───────┐
+                │ Lean  │
+                └───┬───┘
+                    │
+          verified trajectories
+                    │
+                    ▼
+              replay buffer
+                 /     \
+                /       \
+               ▼         ▼
+          policy loss  value loss
+               │         │
+               └────┬────┘
+                    ▼
+               update LLM
+```
+
+---
+
+# 13. The critical point: don't train the value head from policy logits
+
+A common mistake would be to think:
+
+> “The LLM already predicts the next tactic, so perhaps I can derive the value from the probability of its next token.”
+
+No.
+
+You want:
+
+$$
+\pi_\theta(a\mid s)
+$$
+
+to represent **action quality locally**, while
+
+$$
+V_\phi(s)
+$$
+
+represents **long-horizon downstream outcome**.
+
+For example:
+
+$$
+s
+\rightarrow
+a_1
+$$
+
+may have:
+
+$$
+\pi(a_1|s)=0.8
+$$
+
+but lead to a dead end after 20 steps.
+
+Another action:
+
+$$
+a_2
+$$
+
+may have:
+
+$$
+\pi(a_2|s)=0.05
+$$
+
+but lead immediately to a proof.
+
+This is precisely why MCTS + value is useful.
+
+---
+
+# 14. How the value head is actually used by MCTS
+
+Suppose MCTS reaches a leaf:
+
+$$
+s_L.
+$$
+
+Instead of continuing to Lean indefinitely, it asks GPU:
+
+$$
+(\pi_\theta,V_\phi)
+=
+f_\theta(s_L).
+$$
+
+Then:
+
+$$
+V_\phi(s_L)
+$$
+
+is backed up through the tree.
+
+For example:
+
+$$
+Q(s,a)
+\leftarrow
+\frac{
+N(s,a)Q(s,a)+V_\phi(s')
+}{
+N(s,a)+1
+}.
+$$
+
+The exact backup depends on your reward convention.
+
+With reward \(-1\) per tactic:
+
+$$
+\boxed{
+G(s,a)
+=
+-1+V(s')
+}
+$$
+
+so:
+
+$$
+Q(s,a)
+\leftarrow
+\text{running average of }
+[-1+V(s')].
+$$
+
+Thus the value network directly determines MCTS's exploration preference.
+
+---
+
+# 15. Therefore there is a circular dependency
+
+You have:
+
+$$
+V
+\rightarrow
+\text{MCTS}
+\rightarrow
+\text{training data}
+\rightarrow
+V.
+$$
+
+This is not a bug.
+
+It is the fundamental self-improvement loop.
+
+But it means you need an initial value estimate.
+
+Hence:
+
+$$
+\boxed{
+\text{Mathlib supervised value training}
+}
+$$
+
+is extremely useful before:
+
+$$
+\boxed{
+\text{MCTS self-training}.
+}
+$$
+
+---
+
+# 16. I would use a replay buffer
+
+Maintain:
+
+$$
+\mathcal B=
+\{
+(s,\pi_{\mathrm{search}},z)
+\}.
+$$
+
+Every MCTS run contributes:
+
+$$
+(s,\pi_{\mathrm{MCTS}},z).
+$$
+
+For example:
+
+```text
+state_id
+theorem_id
+state_representation
+MCTS_visit_counts
+search_value
+verified_terminal
+proof_length
+```
+
+Then train asynchronously.
+
+You do **not** want:
+
+```text
+MCTS
+→ one batch
+→ gradient step
+→ discard
+```
+
+because this wastes expensive CPU search.
+
+Instead:
+
+$$
+\boxed{
+\text{MCTS}
+\rightarrow
+\text{large replay buffer}
+\rightarrow
+\text{GPU training}
+}
+$$
+
+---
+
+# 17. A very important improvement: prioritize verified states
+
+Your replay buffer can contain three classes:
+
+### Type A — verified success
+
+$$
+s\rightarrow\text{Lean proof}
+$$
+
+Highest-quality value labels.
+
+### Type B — verified intermediate states
+
+States lying on successful proofs.
+
+Also extremely useful.
+
+### Type C — search failures
+
+Useful for policy/value learning, but labels are noisy/censored.
+
+Therefore I would use:
+
+$$
+w_A>w_B>w_C.
+$$
+
+---
+
+# 18. What should you freeze?
+
+For the first implementation:
+
+### Phase 1
+
+Freeze:
+
+$$
+\theta
+$$
+
+and train only:
+
+$$
+\phi.
+$$
+
+### Phase 2
+
+Continue freezing most of the LLM and train:
+
+$$
+\phi
+$$
+
+using MCTS data.
+
+### Phase 3
+
+Unfreeze LoRA/adapters:
+
+$$
+\theta_{\mathrm{LoRA}}
+$$
+
+and jointly train:
+
+$$
+L_\pi+\lambda L_V.
+$$
+
+### Phase 4
+
+Only if necessary:
+
+$$
+\text{full LLM fine-tuning}.
+$$
+
+This is much safer than immediately modifying the entire pretrained policy.
+
+---
+
+# 19. You can actually train the value head with almost no GPU memory
+
+If the backbone is frozen:
+
+$$
+h_i=f_\theta(s_i)
+$$
+
+can be precomputed.
+
+Store:
+
+$$
+h_i\in\mathbb R^d.
+$$
+
+Then value training becomes:
+
+$$
+V(s_i)=w^\top h_i+b.
+$$
+
+You can train this using ordinary regression on CPU/GPU without repeatedly running the LLM.
+
+So the first experiment could literally be:
+
+$$
+\boxed{
+\text{LLM inference once}
+\rightarrow
+\text{cache hidden states}
+\rightarrow
+\text{linear regression}.
+}
+$$
+
+This is an excellent sanity check.
+
+---
+
+# 20. Then test whether the representation contains value information
+
+Before building complicated RL, measure:
+
+$$
+R^2
+$$
+
+between:
+
+$$
+V_\phi(s)
+$$
+
+and:
+
+$$
+-(T-t).
+$$
+
+Also measure Spearman correlation:
+
+$$
+\rho_{\mathrm{Spearman}}
+\left(
+V_\phi(s),
+-(T-t)
+\right).
+$$
+
+If you get something like:
+
+$$
+\rho\approx0.8,
+$$
+
+then your pretrained LLM representation already contains substantial information about proof distance.
+
+If:
+
+$$
+\rho\approx0,
+$$
+
+then adding a sophisticated MCTS training loop probably won't magically fix the representation.
+
+You need better Lean/math SFT.
+
+---
+
+# 21. One particularly important issue: state representation
+
+The value network should receive the **actual Lean proof state**, not merely the original theorem.
+
+For example:
+
+```text
+Theorem:
+  ∀ n : Nat, ...
+
+Current hypotheses:
+  n : Nat
+  h₁ : ...
+
+Current goal:
+  ...
+```
+
+The relevant function is:
+
+$$
+\boxed{
+V(s)=V(
+\text{local context},
+\text{local hypotheses},
+\text{current goal}
+)
+}
+$$
+
+not:
+
+$$
+V(\text{theorem statement}).
+$$
+
+Two states from the same theorem can have radically different values.
+
+---
+
+# 22. Do not use raw proof length as the only notion of quality forever
+
+There is another subtle issue.
+
+Suppose the dataset contains:
+
+$$
+s\rightarrow
+\text{proof of length }100.
+$$
+
+You assign:
+
+$$
+V(s)=-100.
+$$
+
+But MCTS later discovers:
+
+$$
+s\rightarrow
+\text{proof of length }20.
+$$
+
+The old label is now wrong relative to the optimal value.
+
+So the true target should evolve:
+
+$$
+z^{(0)}=-100
+$$
+
+then:
+
+$$
+z^{(1)}=-20.
+$$
+
+Therefore your replay buffer should allow **better proofs to replace worse labels**.
+
+This naturally creates:
+
+$$
+\boxed{
+\text{proof improvement}
+}
+$$
+
+rather than merely proof discovery.
+
+---
+
+# 23. This gives a very clean self-improvement algorithm
+
+For theorem \(P\):
+
+### Initial
+
+$$
+V_0(s)
+$$
+
+comes from supervised proof data.
+
+### Search
+
+$$
+\operatorname{MCTS}(P;\pi_0,V_0)
+$$
+
+finds:
+
+$$
+p_0.
+$$
+
+### Train
+
+Use \(p_0\) to obtain:
+
+$$
+D_0.
+$$
+
+Update:
+
+$$
+V_1
+=
+\operatorname{Train}(V_0,D_0).
+$$
+
+### Search again
+
+$$
+\operatorname{MCTS}(P;\pi_1,V_1)
+$$
+
+may find:
+
+$$
+p_1
+$$
+
+with:
+
+$$
+|p_1|<|p_0|.
+$$
+
+Then:
+
+$$
+V_2
+=
+\operatorname{Train}(V_1,D_1).
+$$
+
+Thus:
+
+$$
+\boxed{
+\text{better proof}
+\rightarrow
+\text{better value target}
+\rightarrow
+\text{better MCTS}
+\rightarrow
+\text{even better proof}
+}
+$$
+
+---
+
+# 24. If your ultimate goal is TTT, this becomes even more interesting
+
+At test time, given an unseen theorem:
+
+$$
+P^*,
+$$
+
+you can perform:
+
+$$
+\Theta_0
+\rightarrow
+\text{MCTS}
+\rightarrow
+D_0
+\rightarrow
+\Theta_1
+\rightarrow
+\text{MCTS}
+\rightarrow
+D_1
+\rightarrow
+\Theta_2.
+$$
+
+But I would **not update the entire LLM** during TTT.
+
+Instead:
+
+$$
+\boxed{
+\theta_{\mathrm{backbone}}\text{ frozen}
+}
+$$
+
+and update only:
+
+$$
+\boxed{
+\phi_V
+}
+$$
+
+initially.
+
+This gives you a very cheap experiment:
+
+$$
+V_{\phi_0}
+\rightarrow
+V_{\phi_1}
+\rightarrow
+V_{\phi_2}.
+$$
+
+Then test whether MCTS improves.
+
+Only afterward should you try:
+
+$$
+\text{LoRA policy TTT}.
+$$
+
+---
+
+# 25. My recommended first implementation
+
+If I were implementing your system now, I would **not** start with complicated RL.
+
+I would do exactly this:
+
+### Step 1
+
+Take your trained LLM:
+
+$$
+\pi_\theta.
+$$
+
+Freeze it.
+
+### Step 2
+
+Run it over existing successful Lean proofs.
+
+Generate:
+
+$$
+(s_t,-(T-t)).
+$$
+
+### Step 3
+
+Attach:
+
+$$
+V_\phi(s)=w^\top h_s+b.
+$$
+
+Train with:
+
+$$
+\boxed{
+L_V=\operatorname{Huber}(V_\phi(s),-(T-t)).
+}
+$$
+
+### Step 4
+
+Put this value head into your CPU MCTS.
+
+Now:
+
+$$
+\boxed{
+\text{LLM policy + trained value + Lean + MCTS}
+}
+$$
+
+should be your first complete system.
+
+### Step 5
+
+Run MCTS on additional theorems.
+
+Collect:
+
+$$
+(s,\pi_{\mathrm{MCTS}},z).
+$$
+
+### Step 6
+
+Retrain value using verified search trajectories.
+
+### Step 7
+
+Only then jointly train:
+
+$$
+\boxed{
+L=
+L_{\mathrm{policy}}
++
+\lambda_VL_{\mathrm{value}}.
+}
+$$
+
+---
+
+## The complete mathematical loop
+
+Ultimately your system becomes:
+
+$$
+\boxed{
+\begin{aligned}
+h_t &= f_\theta(s_t),\\
+\pi_\theta(a|s_t)&=\operatorname{softmax}(W_\pi h_t),\\
+V_\phi(s_t)&=w_V^\top h_t+b_V,\\
+\\
+\mathcal T &=\operatorname{MCTS}
+(\pi_\theta,V_\phi,\mathrm{Lean}),\\
+\\
+D_{\mathcal T}
+&=
+\{(s,\pi_{\mathcal T},z_{\mathcal T})\},\\
+\\
+L_\pi
+&=
+-\mathbb E_{(s,\pi_{\mathcal T})}
+\sum_a
+\pi_{\mathcal T}(a|s)
+\log\pi_\theta(a|s),\\
+\\
+L_V
+&=
+\mathbb E_{(s,z_{\mathcal T})}
+\operatorname{Huber}
+(V_\phi(s),z_{\mathcal T}),\\
+\\
+L
+&=
+\lambda_\pi L_\pi+
+\lambda_VL_V.
+\end{aligned}
+}
+$$
+
+with the initial value target:
+
+$$
+\boxed{
+z_{\mathcal T}=-(T-t)
+}
+$$
+
+coming from **Lean-verified successful proof trajectories**.
+
+That is the simplest mathematically clean route from your existing policy network to an AlphaProof-like policy/value/MCTS system.
+
+The most important conceptual point is:
+
+$$
+\boxed{
+\text{Don't try to "invent" value labels. Lean + successful trajectories already give you them.}
+}
+$$
+
+MCTS then progressively replaces those relatively weak/human-proof-derived labels with **search-derived, increasingly strong labels**.

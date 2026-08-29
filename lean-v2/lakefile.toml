@@ -1,0 +1,6 @@
+name = "v2proj"
+defaultTargets = ["v2"]
+
+[[lean_lib]]
+name = "v2"
+srcDir = "src"

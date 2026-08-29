@@ -1,0 +1,3 @@
+{"prompt":"User: Please generate a tactic in lean4 to solve the state.\nSTATE:\n⊢ 0 < x → x < x + 1\nTACTIC:\nAssistant:","value_target":0.75,"target_kind":"return"}
+{"state":"User: Please generate a tactic in lean4 to solve the state.\nSTATE:\n⊢ n / m ∣ n\nTACTIC:\nAssistant:","proof_depth":8}
+{"states":["User: ... STATE: ⊢ a = a\nTACTIC:\nAssistant:","User: ... STATE: exact rfl\nTACTIC:\nAssistant:"],"rewards":[0.0,1.0],"gamma":0.99}

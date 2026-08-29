@@ -1,0 +1,28 @@
+# 本地环境与机密（不入 git）
+.env
+.env.*
+*.key
+*.pem
+!tools/**/*.sh
+
+# 产物/数据
+out/
+data/
+*.safetensors
+*.pt
+*.cptk
+
+# 大件（留在 F 盘不入 git）
+*.tar.zst
+*.tar.gz
+
+# Python build/cache artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Local nested checkouts and runtime state
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.lake/
