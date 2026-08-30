@@ -4,7 +4,6 @@ $$
 \boxed{
 \pi_\theta(a\mid s)
 }
-
 $$
 
 负责回答“下一步应该尝试什么 tactic”，以及
@@ -13,7 +12,6 @@ $$
 \boxed{
 V_\phi(s)
 }
-
 $$
 
 负责回答“从这个 state 出发，证明大概还有多远”。
@@ -30,7 +28,6 @@ $$
 s\in\mathcal S
 \longmapsto
 x=\operatorname{Enc}(s).
-
 $$
 
 其中：
@@ -47,14 +44,12 @@ f_{\Theta}(x)
 \pi_\theta(\cdot\mid x),
 V_\phi(x)
 \bigr).
-
 $$
 
 如果采用共享 backbone，那么：
 
 $$
 \Theta=(\omega,\theta,\phi)
-
 $$
 
 其中：
@@ -67,7 +62,6 @@ $$
 
 $$
 h=\operatorname{Transformer}_\omega(x)
-
 $$
 
 然后：
@@ -76,14 +70,12 @@ $$
 \pi_\theta(a\mid s)
 =
 \operatorname{PolicyHead}_\theta(h),
-
 $$
 
 $$
 V_\phi(s)
 =
 \operatorname{ValueHead}_\phi(h).
-
 $$
 
 所以 GPU 本质上是：
@@ -96,7 +88,6 @@ $$
 +
 \text{value prediction}
 }
-
 $$
 
 ---
@@ -109,7 +100,6 @@ Lean state 可以写：
 
 $$
 s=(\Gamma,L,G,M,\ldots)
-
 $$
 
 但不能直接把内部 C++/Lean runtime 对象送进 Transformer。
@@ -118,7 +108,6 @@ $$
 
 $$
 x=\operatorname{Serialize}(s).
-
 $$
 
 例如一个 state：
@@ -134,7 +123,6 @@ h2 : b < c
 
 $$
 x=(x_1,\ldots,x_n).
-
 $$
 
 例如抽象写成：
@@ -152,7 +140,6 @@ h_2,
 \texttt{goal},
 \texttt{a<c}
 ].
-
 $$
 
 这里有一个非常重要的概念：
@@ -162,14 +149,12 @@ $$
 \text{GPU 通常看到的是 } \operatorname{Obs}(s)，
 \text{而不是完整 Lean runtime state }s
 }
-
 $$
 
 所以在概率建模上，更严格地说是：
 
 $$
 \pi_\theta(a\mid \operatorname{Obs}(s)).
-
 $$
 
 如果 serialization 丢失了某些影响 tactic validity 的信息，那么神经网络看到的是一个 **partial observation**。
@@ -182,7 +167,6 @@ $$
 
 $$
 \pi_\theta(a\mid s)
-
 $$
 
 也就是给定证明状态 \(s\)，下一步 tactic \(a\) 的条件概率。
@@ -191,7 +175,6 @@ $$
 
 $$
 a=(y_1,\ldots,y_m),
-
 $$
 
 那么 autoregressive LLM 将其分解：
@@ -201,7 +184,6 @@ $$
 =
 \prod_{j=1}^{m}
 \pi_\theta(y_j\mid s,y_{<j}).
-
 $$
 
 因此 log-probability：
@@ -211,7 +193,6 @@ $$
 =
 \sum_{j=1}^{m}
 \log \pi_\theta(y_j\mid s,y_{<j}).
-
 $$
 
 这是非常关键的，因为 MCTS 所需要的是**完整 tactic action 的 prior**，而 LLM 本质上是 token-level distribution。
@@ -224,7 +205,6 @@ $$
 \rightarrow
 \text{tactic-level action prior}
 }
-
 $$
 
 中间必须存在一个 action sampling / completion 过程。
@@ -246,14 +226,12 @@ P(
 \texttt{apply Nat.lt\_trans}
 \mid s
 )
-
 $$
 
 而不是简单：
 
 $$
 P(\texttt{apply}\mid s).
-
 $$
 
 完整 action 概率应该是：
@@ -265,14 +243,12 @@ P(y_1\mid s)
 P(y_2\mid s,y_1)
 \cdots
 P(y_m\mid s,y_{<m}).
-
 $$
 
 因此 GPU 端必须先生成完整 tactic candidate：
 
 $$
 a_1,\ldots,a_K
-
 $$
 
 再把这些 candidate 连同概率交给 CPU。
@@ -285,7 +261,6 @@ $$
 \rightarrow
 \text{action-level prior}
 }
-
 $$
 
 ---
@@ -296,35 +271,30 @@ $$
 
 $$
 \{(a_i,p_i)\}_{i=1}^K
-
 $$
 
 其中：
 
 $$
 p_i=\pi_\theta(a_i\mid s).
-
 $$
 
 CPU 接收到后执行：
 
 $$
 T(s,a_i).
-
 $$
 
 注意：
 
 $$
 p_i>0
-
 $$
 
 绝不等价于：
 
 $$
 T(s,a_i)\neq\bot.
-
 $$
 
 即：
@@ -334,7 +304,6 @@ $$
 \pi_\theta
 \text{ 是 proposal mechanism，不是 verifier}
 }
-
 $$
 
 这是整个系统设计上的核心原则。
@@ -347,7 +316,6 @@ policy：
 
 $$
 \pi_\theta(a\mid s)
-
 $$
 
 是在 action space 上的 probability distribution。
@@ -356,7 +324,6 @@ value：
 
 $$
 V_\phi(s)\in\mathbb R
-
 $$
 
 是在 state space 上的 scalar prediction。
@@ -375,7 +342,6 @@ value 回答：
 
 $$
 r_t=-1
-
 $$
 
 下，可以令：
@@ -386,7 +352,6 @@ G_t
 \sum_{k=t}^{T-1}r_k
 =
 -(T-t).
-
 $$
 
 因此理想 value：
@@ -395,7 +360,6 @@ $$
 V^*(s_t)
 =
 \mathbb E[G_t\mid s_t].
-
 $$
 
 如果 deterministic 且固定 optimal proof：
@@ -404,7 +368,6 @@ $$
 V^*(s)
 \approx
 -d^*(s).
-
 $$
 
 ---
@@ -421,7 +384,6 @@ MCTS 的 **search update**：
 
 $$
 N,Q,V_{\text{search}}
-
 $$
 
 本身不是神经网络 gradient update。
@@ -430,14 +392,12 @@ $$
 
 $$
 V_\phi(s)
-
 $$
 
 必须是参数 \(\phi\) 的可微函数，使我们能够计算：
 
 $$
 \nabla_\phi L_V.
-
 $$
 
 即：
@@ -448,7 +408,6 @@ $$
 \neq
 \text{gradient descent}
 }
-
 $$
 
 MCTS 在 CPU 上改的是 search statistics；训练在 GPU 上改的是 neural parameters。
@@ -461,7 +420,6 @@ MCTS 在 CPU 上改的是 search statistics；训练在 GPU 上改的是 neural 
 
 $$
 z_t=G_t,
-
 $$
 
 那么最基本的 value regression：
@@ -473,7 +431,6 @@ L_V(\phi)
 \left(
 V_\phi(s_t)-z_t
 \right)^2.
-
 $$
 
 梯度：
@@ -485,7 +442,6 @@ $$
 V_\phi(s_t)-z_t
 \right)
 \nabla_\phi V_\phi(s_t).
-
 $$
 
 然后：
@@ -494,14 +450,12 @@ $$
 \phi
 \leftarrow
 \phi-\eta_V\nabla_\phi L_V.
-
 $$
 
 因此 value head 学的是：
 
 $$
 s\mapsto \mathbb E[G\mid s].
-
 $$
 
 ---
@@ -512,55 +466,46 @@ $$
 
 $$
 r_t=-1.
-
 $$
 
 所以完整 trajectory：
 
 $$
 s_0,a_0,s_1,a_1,\ldots,s_T
-
 $$
 
 如果 \(s_T\) solved，那么：
 
 $$
 z_t=-(T-t).
-
 $$
 
 因此每个 trajectory 天然给了大量 supervised targets：
 
 $$
 z_0=-T,
-
 $$
 
 $$
 z_1=-(T-1),
-
 $$
 
 $$
 \cdots
-
 $$
 
 $$
 z_{T-1}=-1,
-
 $$
 
 $$
 z_T=0.
-
 $$
 
 于是一个 proof：
 
 $$
 L=100
-
 $$
 
 本身就可以产生 101 个 value training examples。
@@ -575,7 +520,6 @@ $$
 
 $$
 a_t^*.
-
 $$
 
 那么最直接的 imitation objective 是：
@@ -584,7 +528,6 @@ $$
 L_\pi
 =
 -\log\pi_\theta(a_t^*\mid s_t).
-
 $$
 
 整个 trajectory：
@@ -594,14 +537,12 @@ L_\pi
 =
 -\sum_t
 \log\pi_\theta(a_t^*\mid s_t).
-
 $$
 
 这其实就是：
 
 $$
 \boxed{\text{behavior cloning / supervised policy learning}}
-
 $$
 
 ---
@@ -614,17 +555,14 @@ MCTS 比单条最终 proof 提供了更多信息。
 
 $$
 N(s,a_1)=500
-
 $$
 
 $$
 N(s,a_2)=20
-
 $$
 
 $$
 N(s,a_3)=3.
-
 $$
 
 可以定义 search-improved policy：
@@ -634,7 +572,6 @@ $$
 =
 \frac{N(s,a)^{1/\tau}}
 {\sum_b N(s,b)^{1/\tau}}.
-
 $$
 
 然后训练：
@@ -646,7 +583,6 @@ L_\pi
 \sum_a
 \hat\pi_{\mathrm{MCTS}}(a\mid s)
 \log\pi_\theta(a\mid s).
-
 $$
 
 即：
@@ -655,7 +591,6 @@ $$
 \boxed{
 \text{train network to imitate its own improved search policy}
 }
-
 $$
 
 这是 AlphaZero 系思想的核心。
@@ -668,7 +603,6 @@ $$
 
 $$
 a^*=\text{one successful action}.
-
 $$
 
 但 MCTS 告诉你：
@@ -676,19 +610,16 @@ $$
 $$
 a_1:
 \text{非常有希望}
-
 $$
 
 $$
 a_2:
 \text{偶尔成功}
-
 $$
 
 $$
 a_3:
 \text{明显差}
-
 $$
 
 等更丰富的信息。
@@ -697,7 +628,6 @@ $$
 
 $$
 \hat\pi_{\mathrm{search}}
-
 $$
 
 包含了搜索器对 action space 的 posterior-like refinement。
@@ -710,7 +640,6 @@ $$
 \hat\pi_{\mathrm{search}}
 \longrightarrow
 \pi_{\theta'}
-
 $$
 
 形成 policy improvement loop。
@@ -733,7 +662,6 @@ $$
 \rightarrow
 \pi_{\theta'},V_{\phi'}
 }
-
 $$
 
 即：
@@ -742,7 +670,6 @@ $$
 \boxed{
 \text{learning improves search}
 }
-
 $$
 
 以及：
@@ -751,7 +678,6 @@ $$
 \boxed{
 \text{search improves learning}
 }
-
 $$
 
 这就是 self-improvement。
@@ -764,7 +690,6 @@ $$
 
 $$
 \mathcal S(f_\Theta)
-
 $$
 
 表示使用当前 neural model \(f_\Theta\) 运行大量 MCTS 后得到的数据分布。
@@ -773,7 +698,6 @@ $$
 
 $$
 \mathcal T(D)
-
 $$
 
 表示在数据集 \(D\) 上优化参数。
@@ -786,7 +710,6 @@ $$
 \mathcal T\bigl(
 \mathcal S(\Theta_k)
 \bigr).
-
 $$
 
 所以理想状态是求某种 fixed point：
@@ -795,7 +718,6 @@ $$
 \Theta^*
 =
 \mathcal T(\mathcal S(\Theta^*)).
-
 $$
 
 当然实际系统不会严格收敛到这个数学 fixed point，但这个形式非常有用。
@@ -812,7 +734,6 @@ x
 \operatorname{Transformer}_\omega
 \rightarrow
 h.
-
 $$
 
 然后：
@@ -823,7 +744,6 @@ h
 \text{policy head}
 \rightarrow
 \pi_\theta
-
 $$
 
 和：
@@ -834,14 +754,12 @@ h
 \text{value head}
 \rightarrow
 V_\phi.
-
 $$
 
 因此：
 
 $$
 \Theta=(\omega,\theta,\phi).
-
 $$
 
 总 loss 可以写成：
@@ -854,7 +772,6 @@ L(\Theta)
 \lambda_V L_V
 +
 \lambda_R L_{\mathrm{reg}}.
-
 $$
 
 其中：
@@ -871,14 +788,12 @@ $$
 
 $$
 \omega,\theta
-
 $$
 
 固定，只更新：
 
 $$
 \phi.
-
 $$
 
 那么：
@@ -887,14 +802,12 @@ $$
 \phi
 \leftarrow
 \phi-\eta\nabla_\phi L_V.
-
 $$
 
 这样：
 
 $$
 V_\phi
-
 $$
 
 逐渐学会判断 theorem state。
@@ -903,7 +816,6 @@ $$
 
 $$
 \pi_\theta(a\mid s)
-
 $$
 
 不会改善。
@@ -916,7 +828,6 @@ $$
 \not\Rightarrow
 \text{better proposal distribution}
 }
-
 $$
 
 ---
@@ -929,14 +840,12 @@ $$
 \theta
 \leftarrow
 \theta-\eta\nabla_\theta L_\pi.
-
 $$
 
 会让：
 
 $$
 \pi_\theta
-
 $$
 
 越来越接近搜索得到的 tactic distribution。
@@ -945,7 +854,6 @@ $$
 
 $$
 \text{leaf evaluation}
-
 $$
 
 能力。
@@ -958,14 +866,12 @@ $$
 \boxed{
 \pi:\text{breadth prioritization}
 }
-
 $$
 
 $$
 \boxed{
 V:\text{depth estimation}
 }
-
 $$
 
 ---
@@ -976,7 +882,6 @@ $$
 
 $$
 \mathcal G=(S,E).
-
 $$
 
 policy 给每一个 state 一个方向场：
@@ -985,7 +890,6 @@ $$
 s
 \mapsto
 \pi(\cdot|s).
-
 $$
 
 value 给每一个 state 一个标量势函数：
@@ -994,7 +898,6 @@ $$
 s
 \mapsto
 V(s).
-
 $$
 
 因此：
@@ -1012,7 +915,6 @@ $$
 \text{value}
 +
 \text{actual Lean transitions}.
-
 $$
 
 ---
@@ -1029,7 +931,6 @@ D=
 z_i,
 a_i^*)
 \}_{i=1}^N.
-
 $$
 
 其中：
@@ -1045,7 +946,6 @@ $$
 D_{\text{policy}}
 =
 \{(s_i,\hat\pi_i)\}
-
 $$
 
 以及：
@@ -1054,7 +954,6 @@ $$
 D_{\text{value}}
 =
 \{(s_i,z_i)\}.
-
 $$
 
 ---
@@ -1070,7 +969,6 @@ $$
 \left(
 \Theta_k,D
 \right).
-
 $$
 
 例如 SGD：
@@ -1081,7 +979,6 @@ $$
 \Theta-\eta
 \nabla_\Theta
 L(D;\Theta).
-
 $$
 
 或 Adam 类 optimizer。
@@ -1092,14 +989,12 @@ CPU 负责：
 
 $$
 D\leftarrow\text{search}
-
 $$
 
 GPU 负责：
 
 $$
 D\rightarrow\Theta'.
-
 $$
 
 ---
@@ -1114,14 +1009,12 @@ $$
 s
 \xrightarrow{\text{network inference}}
 (\pi,V)
-
 $$
 
 通常：
 
 $$
 \texttt{no\_grad}.
-
 $$
 
 因为只是推理。
@@ -1136,7 +1029,6 @@ L
 \nabla_\Theta L
 \xrightarrow{\text{optimizer}}
 \Theta'.
-
 $$
 
 所以：
@@ -1147,7 +1039,6 @@ $$
 \neq
 \text{training computation graph}
 }
-
 $$
 
 ---
@@ -1158,14 +1049,12 @@ TTT：
 
 $$
 \boxed{\text{Test-Time Training}}
-
 $$
 
 本质上不是：
 
 $$
 \text{只推理，不更新参数}.
-
 $$
 
 而是：
@@ -1174,7 +1063,6 @@ $$
 \boxed{
 \text{在测试/推理阶段，用当前 problem 自己产生的数据，暂时更新模型}
 }
-
 $$
 
 因此对于 theorem proving：
@@ -1187,7 +1075,6 @@ $$
 \Theta_2
 \rightarrow
 \cdots
-
 $$
 
 其中每次：
@@ -1197,7 +1084,6 @@ $$
 =
 \Theta_k-\eta
 \nabla_\Theta L_{\mathrm{TTT}}(D_{\mathrm{test}}).
-
 $$
 
 ---
@@ -1208,14 +1094,12 @@ $$
 
 $$
 P_{\mathrm{new}}.
-
 $$
 
 开始时：
 
 $$
 \Theta_0
-
 $$
 
 并不知道这个 theorem 的具体结构。
@@ -1224,7 +1108,6 @@ MCTS 开始搜索，产生：
 
 $$
 D_0.
-
 $$
 
 其中包含：
@@ -1244,14 +1127,12 @@ $$
 D_0
 \rightarrow
 \Theta_1
-
 $$
 
 再用：
 
 $$
 \Theta_1
-
 $$
 
 继续搜索。
@@ -1262,7 +1143,6 @@ $$
 D_1
 \rightarrow
 \Theta_2.
-
 $$
 
 形成：
@@ -1277,7 +1157,6 @@ $$
 \rightarrow
 \text{adapt}
 }
-
 $$
 
 ---
@@ -1291,7 +1170,6 @@ $$
 $$
 \tau^*=
 (s_0,a_0,s_1,a_1,\ldots)
-
 $$
 
 训练：
@@ -1299,14 +1177,12 @@ $$
 $$
 L=
 -\sum_t\log\pi_\theta(a_t^*|s_t),
-
 $$
 
 那么只是：
 
 $$
 \text{test-time imitation}.
-
 $$
 
 真正有价值的 TTT 通常利用搜索本身产生的大量结构化 signals，例如：
@@ -1321,7 +1197,6 @@ $$
 &\text{proof-state transitions}
 \end{aligned}
 }
-
 $$
 
 ---
@@ -1338,7 +1213,6 @@ L_{\mathrm{TTT}}
 \lambda_VL_V
 +
 \lambda_{\mathrm{aux}}L_{\mathrm{aux}}.
-
 $$
 
 其中：
@@ -1349,7 +1223,6 @@ L_{\pi}^{\mathrm{search}}
 -\sum_a
 \hat\pi_{\mathrm{MCTS}}(a|s)
 \log\pi_\theta(a|s),
-
 $$
 
 以及：
@@ -1358,7 +1231,6 @@ $$
 L_V
 =
 \frac12(V_\phi(s)-z)^2.
-
 $$
 
 这样每轮 test-time update：
@@ -1369,7 +1241,6 @@ $$
 \Theta_k-
 \eta_k\nabla_\Theta
 L_{\mathrm{TTT}}.
-
 $$
 
 ---
@@ -1380,21 +1251,18 @@ $$
 
 $$
 a_{\mathrm{bad}}.
-
 $$
 
 MCTS 很多时候也会探索：
 
 $$
 a_{\mathrm{bad}}.
-
 $$
 
 如果随后把这些 search outcomes 直接用来训练：
 
 $$
 \pi_{\theta}
-
 $$
 
 那么：
@@ -1407,7 +1275,6 @@ $$
 \text{错误 training data}
 \rightarrow
 \text{更强错误 prior}.
-
 $$
 
 形成：
@@ -1416,7 +1283,6 @@ $$
 \boxed{
 \text{self-reinforcing error loop}
 }
-
 $$
 
 这是 TTT + search 系统最危险的问题之一。
@@ -1431,14 +1297,12 @@ $$
 
 $$
 a_{\mathrm{bad}}
-
 $$
 
 则：
 
 $$
 T(s,a_{\mathrm{bad}})=\bot.
-
 $$
 
 它不能作为“成功 proof transition”加入 positive trajectory。
@@ -1449,7 +1313,6 @@ $$
 \boxed{
 \text{formal verification suppresses many hallucinated positives}
 }
-
 $$
 
 注意不是消除所有错误。
@@ -1458,7 +1321,6 @@ $$
 
 $$
 a_{\mathrm{bad}}
-
 $$
 
 可能**合法但最终走向死路**。
@@ -1467,7 +1329,6 @@ $$
 
 $$
 T(s,a_{\mathrm{bad}})=s'
-
 $$
 
 但：
@@ -1476,7 +1337,6 @@ $$
 s'
 \not\leadsto
 \text{proof}.
-
 $$
 
 这种错误更难检测。
@@ -1491,7 +1351,6 @@ $$
 
 $$
 \pi_\theta
-
 $$
 
 产生 noisy data。
@@ -1500,7 +1359,6 @@ Lean：
 
 $$
 T
-
 $$
 
 给出 hard validity。
@@ -1509,7 +1367,6 @@ MCTS：
 
 $$
 \mathcal S
-
 $$
 
 再在 valid transitions 上寻找真正有效的 long-horizon structure。
@@ -1526,7 +1383,6 @@ $$
 \rightarrow
 \text{TTT data}
 }
-
 $$
 
 这一层比单纯 supervised fine-tuning 强得多。
@@ -1541,14 +1397,12 @@ $$
 D_k
 =
 \mathcal S(P,\Theta_k)
-
 $$
 
 表示在参数：
 
 $$
 \Theta_k
-
 $$
 
 下运行搜索产生的数据。
@@ -1559,14 +1413,12 @@ $$
 \Theta_{k+1}
 =
 \mathcal U(\Theta_k,D_k)
-
 $$
 
 其中：
 
 $$
 \mathcal U
-
 $$
 
 是 test-time optimizer。
@@ -1577,7 +1429,6 @@ $$
 \boxed{
 D_k=\mathcal S(P,\Theta_k)
 }
-
 $$
 
 $$
@@ -1586,7 +1437,6 @@ $$
 =
 \mathcal U(\Theta_k,\mathcal S(P,\Theta_k))
 }
-
 $$
 
 这就是 TTT theorem proving 的核心动力系统。
@@ -1602,7 +1452,6 @@ $$
 P(\text{prove }P_{\mathrm{test}}
 \mid
 \Theta)
-
 $$
 
 而内层是：
@@ -1614,7 +1463,6 @@ $$
 (
 \Theta,D_{\mathrm{search}}(\Theta)
 ).
-
 $$
 
 因此：
@@ -1629,7 +1477,6 @@ D(\Theta)
 \rightarrow
 P(\text{success})
 }
-
 $$
 
 这已经接近 meta-learning / bilevel optimization。
@@ -1644,7 +1491,6 @@ $$
 
 $$
 a^*
-
 $$
 
 是好的。
@@ -1653,7 +1499,6 @@ $$
 
 $$
 a_2,a_3,a_4
-
 $$
 
 到底有多差。
@@ -1662,35 +1507,30 @@ Value head 可以利用失败/部分成功状态学习：
 
 $$
 V(s).
-
 $$
 
 例如：
 
 $$
 s_1:\quad V=-3
-
 $$
 
 而：
 
 $$
 s_2:\quad V=-100.
-
 $$
 
 虽然二者都没有最终 solved，但：
 
 $$
 s_1
-
 $$
 
 明显比：
 
 $$
 s_2
-
 $$
 
 更 promising。
@@ -1707,14 +1547,12 @@ $$
 A(s,a)
 =
 Q(s,a)-V(s).
-
 $$
 
 如果：
 
 $$
 A(s,a)>0
-
 $$
 
 说明这个 action 比当前 state 的平均预期更好。
@@ -1727,7 +1565,6 @@ L_\pi
 -
 A(s,a)
 \log\pi_\theta(a|s).
-
 $$
 
 这就从单纯 imitation 走向 policy-gradient-like weighting。
@@ -1742,26 +1579,22 @@ $$
 
 $$
 N(s,a_1)=100
-
 $$
 
 $$
 N(s,a_2)=2.
-
 $$
 
 如果：
 
 $$
 Q(s,a_1)>Q(s,a_2),
-
 $$
 
 则 MCTS 已经在告诉 policy：
 
 $$
 a_1
-
 $$
 
 应该获得更高 probability mass。
@@ -1770,7 +1603,6 @@ $$
 
 $$
 \hat\pi_{\mathrm{MCTS}}
-
 $$
 
 可以看作一种经过 search computation 后得到的 policy target。
@@ -1787,21 +1619,18 @@ $$
 s:
 \quad
 \Gamma\vdash g
-
 $$
 
 其中：
 
 $$
 \Gamma
-
 $$
 
 里的 hypothesis 与
 
 $$
 g
-
 $$
 
 中的 syntactic/semantic pattern 同时决定：
@@ -1813,19 +1642,16 @@ $$
 
 $$
 h=\operatorname{Transformer}_\omega(s)
-
 $$
 
 然后：
 
 $$
 \pi=\pi_\theta(h)
-
 $$
 
 $$
 V=V_\phi(h)
-
 $$
 
 是很自然的 multi-task learning。
@@ -1839,7 +1665,6 @@ $$
 $$
 L=
 \lambda_\pi L_\pi+\lambda_VL_V.
-
 $$
 
 共享参数 \(\omega\) 的梯度：
@@ -1850,21 +1675,18 @@ $$
 \lambda_\pi\nabla_\omega L_\pi
 +
 \lambda_V\nabla_\omega L_V.
-
 $$
 
 可能出现：
 
 $$
 \nabla_\omega L_\pi
-
 $$
 
 和：
 
 $$
 \nabla_\omega L_V
-
 $$
 
 方向冲突。
@@ -1877,7 +1699,6 @@ $$
 \nabla_\omega L_V
 \right\rangle
 <0.
-
 $$
 
 这就是典型 multi-task interference。
@@ -1886,7 +1707,6 @@ $$
 
 $$
 \lambda_\pi,\lambda_V
-
 $$
 
 以及 optimizer design 很重要。
@@ -1899,14 +1719,12 @@ CPU 端可能同时得到：
 
 $$
 s_1,\ldots,s_B.
-
 $$
 
 于是 GPU 不应该：
 
 $$
 \text{one state}\rightarrow\text{one kernel launch}.
-
 $$
 
 而应该：
@@ -1914,28 +1732,24 @@ $$
 $$
 X=
 [\operatorname{Enc}(s_1),\ldots,\operatorname{Enc}(s_B)]
-
 $$
 
 一起 forward：
 
 $$
 F_\Theta(X).
-
 $$
 
 得到：
 
 $$
 \{(\pi_i,V_i)\}_{i=1}^B.
-
 $$
 
 这会显著提高：
 
 $$
 \text{GPU utilization}.
-
 $$
 
 因此 CPU/GPU 通信设计本身是 AlphaProof-like system 的性能瓶颈之一。
@@ -1989,14 +1803,12 @@ Inference workers
 
 $$
 \boxed{\text{inference}}
-
 $$
 
 以及
 
 $$
 \boxed{\text{training}}
-
 $$
 
 而不是一个统一 workload。
@@ -2011,35 +1823,30 @@ CPU worker 1 使用：
 
 $$
 \Theta_0
-
 $$
 
 CPU worker 2 也使用：
 
 $$
 \Theta_0.
-
 $$
 
 突然 GPU 更新成：
 
 $$
 \Theta_1.
-
 $$
 
 那么 worker 3 使用：
 
 $$
 \Theta_1.
-
 $$
 
 此时同一棵 search tree 里的不同节点可能来自：
 
 $$
 \Theta_0,\Theta_1.
-
 $$
 
 于是树的 prior/value 不是来自同一个 model。
@@ -2048,7 +1855,6 @@ $$
 
 $$
 \boxed{\text{model staleness}}
-
 $$
 
 ---
@@ -2063,7 +1869,6 @@ $$
 
 $$
 \Theta_k
-
 $$
 
 固定。
@@ -2072,14 +1877,12 @@ $$
 
 $$
 D_k.
-
 $$
 
 然后：
 
 $$
 \Theta_{k+1}.
-
 $$
 
 重新开始下一轮。
@@ -2091,7 +1894,6 @@ $$
 \text{one search epoch}\leftrightarrow
 \text{one model version}
 }
-
 $$
 
 ---
@@ -2102,7 +1904,6 @@ $$
 
 $$
 \Theta_k,\Theta_{k+1},\Theta_{k+2}.
-
 $$
 
 吞吐量高，但理论分析更复杂。
@@ -2113,7 +1914,6 @@ $$
 \text{freshness}
 \leftrightarrow
 \text{throughput}
-
 $$
 
 产生 tradeoff。
@@ -2126,28 +1926,24 @@ $$
 
 $$
 \text{geometry}
-
 $$
 
 但 backbone 训练数据主要是：
 
 $$
 \text{number theory}.
-
 $$
 
 第一次搜索可能很差：
 
 $$
 \pi_{\Theta_0}.
-
 $$
 
 经过 theorem-local search：
 
 $$
 D_0
-
 $$
 
 发现大量 geometry-specific patterns。
@@ -2158,14 +1954,12 @@ $$
 \Theta_1
 =
 \operatorname{Update}(\Theta_0,D_0).
-
 $$
 
 于是：
 
 $$
 \pi_{\Theta_1}
-
 $$
 
 对当前 theorem family 更适配。
@@ -2178,7 +1972,6 @@ $$
 \rightarrow
 \text{local theorem specialist}
 }
-
 $$
 
 ---
@@ -2191,7 +1984,6 @@ $$
 
 $$
 \Theta_A
-
 $$
 
 适配得非常好。
@@ -2200,7 +1992,6 @@ $$
 
 $$
 \Theta_A
-
 $$
 
 可能反而变差。
@@ -2209,7 +2000,6 @@ $$
 
 $$
 \Theta_{\mathrm{base}}
-
 $$
 
 保持 frozen。
@@ -2220,21 +2010,18 @@ $$
 \Theta_P
 =
 \Theta_{\mathrm{base}}+\Delta\Theta_P.
-
 $$
 
 TTT 只更新：
 
 $$
 \Delta\Theta_P.
-
 $$
 
 证明完成后：
 
 $$
 \Delta\Theta_P
-
 $$
 
 丢弃。
@@ -2245,7 +2032,6 @@ $$
 \boxed{
 \text{test-time adaptation is ephemeral}
 }
-
 $$
 
 ---
@@ -2258,28 +2044,24 @@ $$
 \Theta
 =
 (\Theta_{\mathrm{backbone}},\Theta_{\mathrm{adapter}})
-
 $$
 
 固定：
 
 $$
 \Theta_{\mathrm{backbone}}
-
 $$
 
 只优化：
 
 $$
 \Theta_{\mathrm{adapter}}.
-
 $$
 
 则：
 
 $$
 \Delta\Theta
-
 $$
 
 很小。
@@ -2303,14 +2085,12 @@ $$
 
 $$
 R_k=\text{search success rate at iteration }k.
-
 $$
 
 如果：
 
 $$
 R_{k+1}-R_k<\epsilon
-
 $$
 
 持续若干轮，就停止。
@@ -2319,14 +2099,12 @@ $$
 
 $$
 \Delta L_{\mathrm{TTT}}
-
 $$
 
 或者：
 
 $$
 \Delta V_{\mathrm{root}}
-
 $$
 
 或更直接：
@@ -2335,7 +2113,6 @@ $$
 \boxed{
 \text{proof found}
 }
-
 $$
 
 立刻停止。
@@ -2348,77 +2125,66 @@ $$
 
 $$
 \Theta_0
-
 $$
 
 ↓
 
 $$
 \text{MCTS}_{\Theta_0}
-
 $$
 
 ↓
 
 $$
 D_0
-
 $$
 
 ↓
 
 $$
 \text{TTT update}
-
 $$
 
 ↓
 
 $$
 \Theta_1
-
 $$
 
 ↓
 
 $$
 \text{MCTS}_{\Theta_1}
-
 $$
 
 ↓
 
 $$
 D_1
-
 $$
 
 ↓
 
 $$
 \text{TTT update}
-
 $$
 
 ↓
 
 $$
 \Theta_2
-
 $$
 
 ↓
 
 $$
 \cdots
-
 $$
 
 ↓
 
 $$
 \boxed{\text{Lean-verified proof}}
-
 $$
 
 这可以看作：
@@ -2427,7 +2193,6 @@ $$
 \boxed{
 \text{Search-Induced Test-Time Learning}
 }
-
 $$
 
 ---
@@ -2440,14 +2205,12 @@ $$
 
 $$
 T:S\times A\rightharpoonup S
-
 $$
 
 并维护：
 
 $$
 \mathcal T_{\mathrm{MCTS}}.
-
 $$
 
 ---
@@ -2456,14 +2219,12 @@ $$
 
 $$
 \pi_\theta(a|s)
-
 $$
 
 和：
 
 $$
 V_\phi(s).
-
 $$
 
 ---
@@ -2477,7 +2238,6 @@ Q(s,a)
 +
 cP(s,a)
 \frac{\sqrt{N(s)}}{1+N(s,a)}.
-
 $$
 
 ---
@@ -2487,7 +2247,6 @@ $$
 $$
 D=
 \mathcal S(T,\pi_\theta,V_\phi).
-
 $$
 
 ---
@@ -2502,7 +2261,6 @@ $$
 \eta
 \nabla_\Theta
 L(D;\Theta).
-
 $$
 
 ---
@@ -2519,7 +2277,6 @@ $$
 \mathcal S(T,\Theta_k)
 \right)
 }
-
 $$
 
 ---
@@ -2530,7 +2287,6 @@ $$
 
 $$
 \boxed{\text{LLM proves theorem}}
-
 $$
 
 而是：
@@ -2539,35 +2295,30 @@ $$
 \boxed{
 \text{Lean defines the search space}
 }
-
 $$
 
 $$
 \boxed{
 \text{LLM defines a prior over that space}
 }
-
 $$
 
 $$
 \boxed{
 \text{Value head estimates distance/return in that space}
 }
-
 $$
 
 $$
 \boxed{
 \text{MCTS allocates compute in that space}
 }
-
 $$
 
 $$
 \boxed{
 \text{TTT changes the prior and value model using evidence discovered in that space}
 }
-
 $$
 
 因此：
@@ -2584,7 +2335,6 @@ $$
 \rightarrow
 \text{better search}
 }
-
 $$
 
 才是整个 architecture 的真正核心。
@@ -2616,7 +2366,6 @@ D
 &\xrightarrow{\nabla_\Theta L}
 \Theta'
 \end{aligned}}
-
 $$
 
 其中最关键的是：
@@ -2631,7 +2380,6 @@ $$
 \quad
 \text{TTT adapts the bias at test time.}
 }
-
 $$
 
 这四者之间如果边界设计正确，系统就形成了一个非常强的 **verified neuro-symbolic search loop**。

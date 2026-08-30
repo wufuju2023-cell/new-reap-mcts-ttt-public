@@ -8,7 +8,6 @@ $$
 \;\rightarrow\;
 \text{我们能不能拿现成模型直接初始化 Value}
 }
-
 $$
 
 先给结论：
@@ -28,7 +27,6 @@ $$
 
 $$
 r_t=-1
-
 $$
 
 如果一条 proof trajectory 是
@@ -41,14 +39,12 @@ s_1
 \cdots
 \xrightarrow{a_{T-1}}
 s_T,
-
 $$
 
 且：
 
 $$
 s_T=\text{Solved},
-
 $$
 
 那么从 \(s_t\) 开始的 return：
@@ -59,7 +55,6 @@ G_t
 \sum_{k=t}^{T-1}r_k
 =
 -(T-t).
-
 $$
 
 因此最理想的 value function 是：
@@ -68,7 +63,6 @@ $$
 \boxed{
 V^*(s_t)=-d^*(s_t)
 }
-
 $$
 
 其中：
@@ -77,7 +71,6 @@ $$
 d^*(s)
 =
 \text{从 }s\text{ 到一个 solved state 所需的最优剩余步数}.
-
 $$
 
 如果考虑 stochastic policy，则：
@@ -90,7 +83,6 @@ V^\pi(s)
 \sum_{k=t}^{T-1}r_k
 \mid s_t=s
 \right].
-
 $$
 
 所以 AlphaProof-style value head 本质上是在学习：
@@ -101,7 +93,6 @@ s
 \longmapsto
 \text{expected negative remaining proof length}
 }
-
 $$
 
 而不是一个模糊的：
@@ -126,21 +117,18 @@ $$
 
 $$
 s_0,a_0,s_1,a_1,\ldots,s_T
-
 $$
 
 直接构造：
 
 $$
 (s_t,z_t)
-
 $$
 
 其中：
 
 $$
 z_t=-(T-t).
-
 $$
 
 于是数据：
@@ -150,7 +138,6 @@ D_V=
 \{
 (s_t,-(T-t))
 \}.
-
 $$
 
 loss：
@@ -165,7 +152,6 @@ L_V
 V_\phi(s_i)-z_i
 \right)^2
 }
-
 $$
 
 或者：
@@ -175,7 +161,6 @@ L_V=
 \frac1N
 \sum_i
 |V_\phi(s_i)-z_i|.
-
 $$
 
 也可以用 Huber loss：
@@ -183,7 +168,6 @@ $$
 $$
 L_V=
 \operatorname{Huber}(V_\phi(s)-z).
-
 $$
 
 ### 优点
@@ -200,14 +184,12 @@ $$
 
 $$
 100
-
 $$
 
 个 state 基本上就产生：
 
 $$
 100
-
 $$
 
 个 value labels。
@@ -226,28 +208,24 @@ $$
 
 $$
 s_t\rightarrow\cdots\rightarrow s_T,
-
 $$
 
 就定义：
 
 $$
 z_t=-\left(T-t\right).
-
 $$
 
 然后：
 
 $$
 V_\phi(s_t)\approx z_t.
-
 $$
 
 这其实就是：
 
 $$
 \boxed{\text{Monte Carlo value estimation}}
-
 $$
 
 即：
@@ -256,28 +234,24 @@ $$
 V^\pi(s)
 =
 \mathbb E_\pi[G_t\mid s].
-
 $$
 
 如果 trajectory 来自当前 policy：
 
 $$
 \pi_\theta,
-
 $$
 
 那么训练的是：
 
 $$
 V^{\pi_\theta}.
-
 $$
 
 这与“optimal value”
 
 $$
 V^*
-
 $$
 
 有区别。
@@ -292,7 +266,6 @@ $$
 
 $$
 r_t=-1.
-
 $$
 
 Bellman equation：
@@ -302,7 +275,6 @@ V^\pi(s_t)
 =
 r_t+
 \gamma V^\pi(s_{t+1}).
-
 $$
 
 于是 TD target：
@@ -312,7 +284,6 @@ y_t
 =
 -1+
 \gamma V_{\phi^-}(s_{t+1}),
-
 $$
 
 loss：
@@ -327,7 +298,6 @@ V_\phi(s_t)
 [-1+\gamma V_{\phi^-}(s_{t+1})]
 \right)^2
 }
-
 $$
 
 其中 \(\phi^-\) 可以是 target network 参数。
@@ -336,21 +306,18 @@ $$
 
 $$
 \gamma=1,
-
 $$
 
 则：
 
 $$
 V(s_t)\approx -1+V(s_{t+1}).
-
 $$
 
 这与：
 
 $$
 V(s_t)=-d(s_t)
-
 $$
 
 完全一致，因为：
@@ -359,7 +326,6 @@ $$
 -d(s_t)
 =
 -1-d(s_{t+1}).
-
 $$
 
 ### 优点
@@ -374,7 +340,6 @@ $$
 \text{error}(V(s_{t+1}))
 \rightarrow
 \text{error}(V(s_t)).
-
 $$
 
 对于 theorem proving 这种长 horizon 问题，这一点非常重要。
@@ -389,7 +354,6 @@ $$
 
 $$
 s
-
 $$
 
 进行了大量 search。
@@ -398,14 +362,12 @@ $$
 
 $$
 Q_{\mathrm{MCTS}}(s,a)
-
 $$
 
 以及 root/search value：
 
 $$
 V_{\mathrm{MCTS}}(s).
-
 $$
 
 那么可以把：
@@ -414,7 +376,6 @@ $$
 \boxed{
 V_{\mathrm{MCTS}}(s)
 }
-
 $$
 
 作为训练 target：
@@ -427,7 +388,6 @@ V_\phi(s)
 -
 V_{\mathrm{MCTS}}(s)
 \right)^2.
-
 $$
 
 于是：
@@ -442,14 +402,12 @@ $$
 \rightarrow
 \text{train value network}
 }
-
 $$
 
 这比简单模仿人类 proof 更强，因为 MCTS 发现的是：
 
 $$
 \text{search-improved value}.
-
 $$
 
 ---
@@ -462,28 +420,24 @@ $$
 
 $$
 s_1
-
 $$
 
 最终需要：
 
 $$
 3
-
 $$
 
 步；
 
 $$
 s_2
-
 $$
 
 最终需要：
 
 $$
 15
-
 $$
 
 步。
@@ -492,7 +446,6 @@ $$
 
 $$
 V(s_1)>V(s_2).
-
 $$
 
 于是可以做 ranking loss：
@@ -508,7 +461,6 @@ L_{\mathrm{rank}}
 -(V(s_1)-V(s_2))
 \right)
 \right].
-
 $$
 
 或者 margin loss：
@@ -521,21 +473,18 @@ L_{\mathrm{margin}}
 0,
 m-V(s_1)+V(s_2)
 \right).
-
 $$
 
 这对于 MCTS 很有意义，因为 selection 主要需要：
 
 $$
 Q(s,a_1)>Q(s,a_2).
-
 $$
 
 而不一定需要：
 
 $$
 Q(s,a)=\text{完美校准的概率}.
-
 $$
 
 ---
@@ -548,7 +497,6 @@ $$
 
 $$
 V(s)=-\mathbb E[\text{steps}].
-
 $$
 
 而定义：
@@ -557,14 +505,12 @@ $$
 V(s)
 =
 P(\text{eventual proof success}\mid s).
-
 $$
 
 于是：
 
 $$
 V(s)\in[0,1].
-
 $$
 
 loss：
@@ -577,7 +523,6 @@ y\log V(s)
 +
 (1-y)\log(1-V(s))
 \right].
-
 $$
 
 其中：
@@ -588,7 +533,6 @@ y=
 1 & \text{最终成功}\\
 0 & \text{最终失败}.
 \end{cases}
-
 $$
 
 这在工程上其实很有吸引力。
@@ -601,14 +545,12 @@ $$
 
 $$
 r=-1
-
 $$
 
 天然让 value 表示：
 
 $$
 -\text{remaining proof steps}.
-
 $$
 
 这同时编码：
@@ -621,19 +563,16 @@ $$
 
 $$
 s_1:\quad P_{\mathrm{success}}=0.9,\quad L=100
-
 $$
 
 $$
 s_2:\quad P_{\mathrm{success}}=0.9,\quad L=10.
-
 $$
 
 如果只预测 success probability：
 
 $$
 V(s_1)=V(s_2)=0.9.
-
 $$
 
 无法区分。
@@ -642,19 +581,16 @@ $$
 
 $$
 V(s_1)\approx -100
-
 $$
 
 $$
 V(s_2)\approx -10.
-
 $$
 
 搜索就能明显偏好：
 
 $$
 s_2.
-
 $$
 
 所以对于 AlphaProof 这种**最短/快速找到 proof** 的搜索系统，我认为：
@@ -663,7 +599,6 @@ $$
 \boxed{
 V=-\text{remaining steps}
 }
-
 $$
 
 是更自然的第一版。
@@ -688,7 +623,6 @@ $$
 \rightarrow
 \text{Test-time RL}
 }
-
 $$
 
 官方披露的信息非常具体。([Nature][1])
@@ -701,7 +635,6 @@ AlphaProof 的 proof network 首先进行了非常大规模的预训练：
 
 $$
 \sim300\text{ billion tokens}
-
 $$
 
 来源包括：
@@ -715,7 +648,6 @@ $$
 \boxed{
 \text{next-token prediction}
 }
-
 $$
 
 并结合 masked span reconstruction 等正则化。
@@ -736,7 +668,6 @@ $$
 \text{mathematics}
 +
 \text{language}
-
 $$
 
 的基础 representation。
@@ -751,7 +682,6 @@ $$
 
 $$
 (s,a)
-
 $$
 
 即：
@@ -762,14 +692,12 @@ $$
 \rightarrow
 \text{human tactic}
 }
-
 $$
 
 论文报告大约：
 
 $$
 300,000
-
 $$
 
 个 state–tactic pairs，总计约 5M tactic tokens。([Nature][1])
@@ -780,7 +708,6 @@ $$
 L_\pi
 =
 -\log\pi_\theta(a^*\mid s).
-
 $$
 
 ---
@@ -795,28 +722,24 @@ $$
 \text{random value head}
 \rightarrow
 \text{直接 RL}.
-
 $$
 
 而是使用 Mathlib proofs 的结构：
 
 $$
 s_t\rightarrow\cdots\rightarrow s_T
-
 $$
 
 构造 remaining-step target：
 
 $$
 z_t=-(T-t).
-
 $$
 
 然后训练 value head：
 
 $$
 V_\phi(s_t)\approx z_t.
-
 $$
 
 官方 Nature 论文明确这样描述：SFT 阶段除了让 policy 学 Lean tactic generation，也初始化 value head，使其估计 proof 剩余步骤。([Nature][1])
@@ -831,14 +754,12 @@ $$
 
 $$
 V_{\phi_0}(s)\sim\text{random},
-
 $$
 
 那么初始 MCTS：
 
 $$
 Q(s,a)
-
 $$
 
 几乎没有意义。
@@ -847,7 +768,6 @@ $$
 
 $$
 \pi_\theta.
-
 $$
 
 而 policy 又只是 SFT 后的模仿模型。
@@ -858,7 +778,6 @@ $$
 
 $$
 V_\phi(s)\approx-\text{remaining steps},
-
 $$
 
 那么从第一轮 RL 开始：
@@ -867,7 +786,6 @@ $$
 \boxed{
 \text{MCTS already has a meaningful heuristic}
 }
-
 $$
 
 这对复刻非常重要。
@@ -888,21 +806,18 @@ $$
 x_{\mathrm{NL}}
 \rightarrow
 p_{\mathrm{Lean}}.
-
 $$
 
 官方报告从约：
 
 $$
 1\text{ million}
-
 $$
 
 自然语言数学 statements 生成约：
 
 $$
 80\text{ million}
-
 $$
 
 Lean problems。([Nature][1])
@@ -913,7 +828,6 @@ $$
 \boxed{
 \text{formal theorem generation}
 }
-
 $$
 
 本质上是 RL environment 的 curriculum generator。
@@ -926,7 +840,6 @@ $$
 
 $$
 P_1,\ldots,P_N
-
 $$
 
 都是 Lean theorem。
@@ -935,7 +848,6 @@ CPU actor：
 
 $$
 \text{MCTS}
-
 $$
 
 尝试证明。
@@ -948,7 +860,6 @@ s
 a
 \rightarrow
 s'
-
 $$
 
 Lean 验证。
@@ -957,35 +868,30 @@ Lean 验证。
 
 $$
 \text{proof found}.
-
 $$
 
 失败：
 
 $$
 \text{no proof under budget}.
-
 $$
 
 于是得到新的：
 
 $$
 D_{\mathrm{RL}}.
-
 $$
 
 然后训练：
 
 $$
 \pi_\theta
-
 $$
 
 和：
 
 $$
 V_\phi.
-
 $$
 
 论文明确说 AlphaProof 在 RL 阶段的 proof 是**系统自己与 Lean environment 交互生成的**，而不是人工逐条提供。([PubMed Central (PMC)][3])
@@ -998,7 +904,6 @@ $$
 
 $$
 \text{player A vs player B}.
-
 $$
 
 而是：
@@ -1009,14 +914,12 @@ $$
 \leftrightarrow
 \text{formal environment}
 }
-
 $$
 
 不断生成：
 
 $$
 \text{experience}.
-
 $$
 
 因此更准确地说：
@@ -1025,7 +928,6 @@ $$
 \boxed{
 \text{self-generated formal proof experience}
 }
-
 $$
 
 ---
@@ -1036,14 +938,12 @@ $$
 
 $$
 \text{所有 theorem 同时给最大搜索预算}.
-
 $$
 
 而是动态增加：
 
 $$
 B_1<B_2<B_3<\cdots
-
 $$
 
 的 search budget。
@@ -1052,7 +952,6 @@ $$
 
 $$
 \text{small budget}.
-
 $$
 
 容易问题迅速解决。
@@ -1061,7 +960,6 @@ $$
 
 $$
 \text{larger budget}.
-
 $$
 
 开始挑战难题。
@@ -1078,49 +976,42 @@ AlphaProof 的公开描述明确提到这种逐渐增加 search compute 的训�
 
 $$
 P
-
 $$
 
 已经找到 proof：
 
 $$
 L=100,
-
 $$
 
 不会简单：
 
 $$
 \text{delete}(P).
-
 $$
 
 因为后来模型可能找到：
 
 $$
 L=30.
-
 $$
 
 而 reward：
 
 $$
 r=-1
-
 $$
 
 意味着：
 
 $$
 -30>-100.
-
 $$
 
 所以 theorem 可以成为：
 
 $$
 \boxed{\text{持续的 curriculum}}
-
 $$
 
 直到找到更好的 proof。
@@ -1147,7 +1038,6 @@ $$
 \text{RL}
 \rightarrow
 \text{TTT}.
-
 $$
 
 ### Route B：Practical reproduction
@@ -1166,7 +1056,6 @@ $$
 \rightarrow
 \text{RL}
 }
-
 $$
 
 我认为这是你真正应该做的。
@@ -1183,7 +1072,6 @@ $$
 \text{scalar value head}
 \rightarrow
 \text{MCTS}.
-
 $$
 
 然后只在后面增加 RL/TTT。
@@ -1196,14 +1084,12 @@ $$
 
 $$
 \boxed{\text{AlphaProof 的算法结构}}
-
 $$
 
 而不是：
 
 $$
 \boxed{\text{AlphaProof 的 pretraining bill}}
-
 $$
 
 后者几乎不现实。
@@ -1212,28 +1098,24 @@ $$
 
 $$
 f_\omega.
-
 $$
 
 然后新增：
 
 $$
 W_V\in\mathbb R^{d\times1}
-
 $$
 
 和：
 
 $$
 b_V\in\mathbb R.
-
 $$
 
 例如：
 
 $$
 h_{\mathrm{EOS}}\in\mathbb R^d
-
 $$
 
 然后：
@@ -1244,7 +1126,6 @@ V_\phi(s)
 =
 w_V^\top h_{\mathrm{EOS}}+b_V
 }
-
 $$
 
 这就是一个最简单的可微 value head。
@@ -1263,7 +1144,6 @@ $$
 
 $$
 V(s)=\text{remaining proof value}
-
 $$
 
 的标准 checkpoint。
@@ -1272,14 +1152,12 @@ $$
 
 $$
 \boxed{\text{policy models}}
-
 $$
 
 而不是：
 
 $$
 \boxed{\text{value models}}.
-
 $$
 
 例如 LeanCopilot 提供 Lean tactic generation 和 premise retrieval 模型；其公开模型包括 ByT5 系列的 tactic generator/retriever，但它们不是 scalar value networks。([GitHub][2])
@@ -1302,7 +1180,6 @@ $$
 
 $$
 \boxed{\text{proof-generation policy}}
-
 $$
 
 而不是：
@@ -1311,7 +1188,6 @@ $$
 \boxed{
 s\mapsto V(s)
 }
-
 $$
 
 的 scalar value model。
@@ -1334,7 +1210,6 @@ $$
 \text{policy LLM}
 +
 \text{value LLM}
-
 $$
 
 并提出：
@@ -1343,7 +1218,6 @@ $$
 \text{pretrained math model}
 \rightarrow
 \text{projection/scalar head}
-
 $$
 
 作为 energy/value model 的路线。([GitHub][6])
@@ -1354,7 +1228,6 @@ $$
 \boxed{
 \text{这是研究项目/方向，不是一个已经成熟的 AlphaProof value checkpoint}
 }
-
 $$
 
 所以它更适合作为**架构参考**，而不是直接下载一个成熟 value model。
@@ -1369,7 +1242,6 @@ $$
 
 $$
 V(s)
-
 $$
 
 的训练数据非常容易构造。
@@ -1378,7 +1250,6 @@ $$
 
 $$
 300,000
-
 $$
 
 个 state-tactic pairs。
@@ -1387,29 +1258,24 @@ $$
 
 $$
 s_0,\ldots,s_T.
-
 $$
 
 你直接得到：
 
 $$
 (s_0,-T),
-
 $$
 
 $$
 (s_1,-(T-1)),
-
 $$
 
 $$
 \ldots
-
 $$
 
 $$
 (s_T,0).
-
 $$
 
 因此 value pretraining dataset 可以比 policy SFT dataset **自然地大很多**。
@@ -1418,7 +1284,6 @@ $$
 
 $$
 \text{100B-token value pretraining}.
-
 $$
 
 ---
@@ -1433,21 +1298,18 @@ $$
 +
 \text{random scalar value head}
 }
-
 $$
 
 然后冻结：
 
 $$
 \omega
-
 $$
 
 先训练：
 
 $$
 \phi.
-
 $$
 
 即：
@@ -1456,7 +1318,6 @@ $$
 V_\phi(s)
 =
 w^\top h_{\mathrm{EOS}}+b.
-
 $$
 
 训练：
@@ -1469,14 +1330,12 @@ w^\top h_{\mathrm{EOS}}+b
 +
 (T-t)
 \right)^2.
-
 $$
 
 因为：
 
 $$
 z_t=-(T-t).
-
 $$
 
 ---
@@ -1489,28 +1348,24 @@ $$
 
 $$
 h_s=f_{\omega_0}(s)
-
 $$
 
 冻结：
 
 $$
 \omega_0.
-
 $$
 
 只优化：
 
 $$
 w,b.
-
 $$
 
 那么：
 
 $$
 V(s)=w^\top h_s+b.
-
 $$
 
 优化：
@@ -1521,7 +1376,6 @@ $$
 \left(
 w^\top h_i+b-z_i
 \right)^2.
-
 $$
 
 这是一个标准 linear regression。
@@ -1532,7 +1386,6 @@ $$
 \hat\beta
 =
 (X^\top X+\lambda I)^{-1}X^\top z.
-
 $$
 
 这里：
@@ -1542,7 +1395,6 @@ $$
 \begin{bmatrix}
 w\\b
 \end{bmatrix}.
-
 $$
 
 这意味着：
@@ -1551,7 +1403,6 @@ $$
 \boxed{
 \text{value initialization 可以极其便宜}
 }
-
 $$
 
 ---
@@ -1562,14 +1413,12 @@ $$
 
 $$
 \omega=\text{frozen}.
-
 $$
 
 第二阶段：
 
 $$
 \text{last }k\text{ transformer blocks}
-
 $$
 
 解冻。
@@ -1578,7 +1427,6 @@ $$
 
 $$
 \text{LoRA/adapters}.
-
 $$
 
 第四阶段才考虑 full fine-tuning。
@@ -1593,7 +1441,6 @@ $$
 \rightarrow
 \text{RL value improvement}
 }
-
 $$
 
 ---
@@ -1606,42 +1453,36 @@ $$
 
 $$
 V_{\mathrm{len}}(s)
-
 $$
 
 预测：
 
 $$
 -\text{remaining steps}.
-
 $$
 
 同时：
 
 $$
 V_{\mathrm{succ}}(s)
-
 $$
 
 预测：
 
 $$
 P(\text{eventual success}\mid s).
-
 $$
 
 于是：
 
 $$
 V_{\mathrm{len}}\in\mathbb R
-
 $$
 
 而：
 
 $$
 V_{\mathrm{succ}}\in[0,1].
-
 $$
 
 GPU 输出：
@@ -1650,7 +1491,6 @@ $$
 \boxed{
 (\pi,V_{\mathrm{len}},V_{\mathrm{succ}})
 }
-
 $$
 
 然后 MCTS 可以综合：
@@ -1661,7 +1501,6 @@ Q
 \alpha V_{\mathrm{len}}
 +
 \beta V_{\mathrm{succ}}.
-
 $$
 
 或者更严格地：
@@ -1670,14 +1509,12 @@ $$
 Q
 =
 V_{\mathrm{len}}
-
 $$
 
 作为主 reward，
 
 $$
 V_{\mathrm{succ}}
-
 $$
 
 作为 risk estimator。
@@ -1692,31 +1529,26 @@ $$
 
 $$
 P_{\mathrm{success}}=0.95,
-
 $$
 
 $$
 E[L\mid success]=100.
-
 $$
 
 ### State B
 
 $$
 P_{\mathrm{success}}=0.60,
-
 $$
 
 $$
 E[L\mid success]=5.
-
 $$
 
 如果只有：
 
 $$
 V_{\mathrm{len}},
-
 $$
 
 可能认为 B 极好。
@@ -1725,7 +1557,6 @@ $$
 
 $$
 V_{\mathrm{succ}},
-
 $$
 
 可能认为 A 极好。
@@ -1738,7 +1569,6 @@ $$
 +
 \text{cost-to-success}
 }
-
 $$
 
 所以双 head 是一个非常合理的 research direction。
@@ -1757,14 +1587,12 @@ $$
 
 $$
 \mathsf{Step}(s,a)
-
 $$
 
 以及：
 
 $$
 \mathsf{Solved}(s).
-
 $$
 
 用 Lean 4 + Mathlib。
@@ -1777,14 +1605,12 @@ $$
 
 $$
 f_\omega.
-
 $$
 
 构造：
 
 $$
 (s,a^*)
-
 $$
 
 数据。
@@ -1793,7 +1619,6 @@ $$
 
 $$
 L_\pi=-\log\pi_\theta(a^*|s).
-
 $$
 
 目标：
@@ -1808,14 +1633,12 @@ $$
 
 $$
 s_0,\ldots,s_T.
-
 $$
 
 构造：
 
 $$
 z_t=-(T-t).
-
 $$
 
 训练：
@@ -1824,7 +1647,6 @@ $$
 L_V
 =
 (V_\phi(s_t)-z_t)^2.
-
 $$
 
 这个阶段甚至不需要 RL。
@@ -1837,7 +1659,6 @@ GPU 固定：
 
 $$
 (\pi_\theta,V_\phi).
-
 $$
 
 CPU：
@@ -1846,14 +1667,12 @@ $$
 \text{MCTS}
 +
 \text{Lean}.
-
 $$
 
 开始生成：
 
 $$
 D_{\mathrm{search}}.
-
 $$
 
 ---
@@ -1864,14 +1683,12 @@ $$
 
 $$
 \hat\pi_{\mathrm{MCTS}}
-
 $$
 
 和：
 
 $$
 z_{\mathrm{MCTS}}.
-
 $$
 
 训练：
@@ -1885,7 +1702,6 @@ L
 +
 \lambda_V
 (V_\phi-z)^2.
-
 $$
 
 然后：
@@ -1894,7 +1710,6 @@ $$
 \Theta_{k+1}
 =
 \operatorname{Optimizer}(\Theta_k,D_k).
-
 $$
 
 ---
@@ -1905,7 +1720,6 @@ $$
 
 $$
 \Theta_0
-
 $$
 
 开始。
@@ -1914,14 +1728,12 @@ $$
 
 $$
 \text{MCTS}_{\Theta_0}(P).
-
 $$
 
 得到：
 
 $$
 D_0.
-
 $$
 
 然后：
@@ -1930,14 +1742,12 @@ $$
 \Theta_1
 =
 \Theta_0-\eta\nabla L(D_0).
-
 $$
 
 再：
 
 $$
 \text{MCTS}_{\Theta_1}(P).
-
 $$
 
 如此循环：
@@ -1951,7 +1761,6 @@ $$
 \rightarrow\Theta_2
 \rightarrow\cdots
 }
-
 $$
 
 直到找到 proof。
@@ -1968,7 +1777,6 @@ $$
 \text{7B policy}
 +
 \text{7B value}
-
 $$
 
 一开始就搞两个完整模型。
@@ -1977,7 +1785,6 @@ $$
 
 $$
 \text{GPU memory}\times2
-
 $$
 
 以及 inference throughput 大幅下降。
@@ -1992,28 +1799,24 @@ $$
 +
 \text{scalar value head}
 }
-
 $$
 
 即：
 
 $$
 h=f_\omega(s)
-
 $$
 
 然后：
 
 $$
 \pi=\operatorname{softmax}(W_\pi h)
-
 $$
 
 以及：
 
 $$
 V=W_Vh+b_V.
-
 $$
 
 ---
@@ -2024,21 +1827,18 @@ $$
 
 $$
 d=4096
-
 $$
 
 那么：
 
 $$
 W_V\in\mathbb R^{1\times4096}.
-
 $$
 
 参数只有：
 
 $$
 4096+1.
-
 $$
 
 也就是说：
@@ -2047,14 +1847,12 @@ $$
 \boxed{
 \text{value head 本身几乎不需要计算资源}
 }
-
 $$
 
 真正昂贵的是：
 
 $$
 f_\omega(s).
-
 $$
 
 所以“找一个现成的 pretrained value model”从工程上未必是最佳目标。
@@ -2065,14 +1863,12 @@ $$
 \boxed{
 \text{找一个好的 pretrained mathematical/Lean backbone}
 }
-
 $$
 
 然后自己训练：
 
 $$
 V_\phi.
-
 $$
 
 ---
@@ -2097,7 +1893,6 @@ $$
 
 $$
 \text{value representation}
-
 $$
 
 甚至可以直接从一个数学能力很强的 general math LLM 开始，再进行 Lean SFT。
@@ -2116,14 +1911,12 @@ V(s)
 g_\phi(
 \operatorname{LLM}(s)
 )
-
 $$
 
 其中：
 
 $$
 g_\phi
-
 $$
 
 只是 scalar projection。
@@ -2152,7 +1945,6 @@ scalar V(s)
 
 $$
 \text{Value quality}
-
 $$
 
 到底来自哪里。
@@ -2165,7 +1957,6 @@ $$
 \text{random backbone}
 +
 \text{value head}
-
 $$
 
 ### B
@@ -2174,7 +1965,6 @@ $$
 \text{math pretrained backbone}
 +
 \text{value head}
-
 $$
 
 ### C
@@ -2183,7 +1973,6 @@ $$
 \text{Lean SFT backbone}
 +
 \text{value head}
-
 $$
 
 ### D
@@ -2192,7 +1981,6 @@ $$
 \text{Lean SFT + MCTS-trained backbone}
 +
 \text{value head}.
-
 $$
 
 然后测：
@@ -2203,14 +1991,12 @@ $$
 V(s),
 -d^*(s)
 )
-
 $$
 
 以及：
 
 $$
 \text{MCTS proof success@budget}.
-
 $$
 
 我预计真正有意义的是：
@@ -2219,7 +2005,6 @@ $$
 \boxed{
 \text{C}\gg\text{B}\gg\text{A}
 }
-
 $$
 
 而 D 再进一步提高。
@@ -2232,7 +2017,6 @@ $$
 
 $$
 \operatorname{MSE}(V,z).
-
 $$
 
 更应该看：
@@ -2241,14 +2025,12 @@ $$
 \boxed{
 \operatorname{RankCorr}(V(s_i),V(s_j))
 }
-
 $$
 
 因为 MCTS 更关心：
 
 $$
 V(s_i)>V(s_j)
-
 $$
 
 是否正确。
@@ -2259,21 +2041,18 @@ $$
 
 $$
 V(s_1)=-5,\quad V(s_2)=-20.
-
 $$
 
 模型：
 
 $$
 V_\phi(s_1)=-2,\quad V_\phi(s_2)=-100.
-
 $$
 
 MSE 可能不漂亮，但排序：
 
 $$
 s_1>s_2
-
 $$
 
 完全正确。
@@ -2290,12 +2069,10 @@ $$
 \boxed{
 \text{Stage A: supervised distance}
 }
-
 $$
 
 $$
 V(s)\approx-\text{remaining proof steps}.
-
 $$
 
 ↓
@@ -2304,12 +2081,10 @@ $$
 \boxed{
 \text{Stage B: search value distillation}
 }
-
 $$
 
 $$
 V(s)\approx V_{\mathrm{MCTS}}(s).
-
 $$
 
 ↓
@@ -2318,7 +2093,6 @@ $$
 \boxed{
 \text{Stage C: test-time adaptation}
 }
-
 $$
 
 $$
@@ -2328,7 +2102,6 @@ V_{\phi_k}
 -
 \eta\nabla_\phi
 L_{\mathrm{TTT}}.
-
 $$
 
 这比直接从零 RL 学 value 稳定得多。
@@ -2357,7 +2130,6 @@ $$
 \text{Success-probability modeling}
 & V(s)\rightarrow P(\text{proof success})
 \end{array}}
-
 $$
 
 **复刻 AlphaProof，我首选：**
@@ -2370,7 +2142,6 @@ $$
 \rightarrow
 \text{RL/TTT}
 }
-
 $$
 
 ---
@@ -2383,7 +2154,6 @@ $$
 \boxed{
 300B\text{-token pretraining}
 }
-
 $$
 
 ↓
@@ -2392,7 +2162,6 @@ $$
 \boxed{
 \text{Mathlib SFT}
 }
-
 $$
 
 ↓
@@ -2401,7 +2170,6 @@ $$
 \boxed{
 \text{value initialization}
 }
-
 $$
 
 ↓
@@ -2410,7 +2178,6 @@ $$
 \boxed{
 \sim80M\text{ auto-formalized Lean problems}
 }
-
 $$
 
 ↓
@@ -2419,7 +2186,6 @@ $$
 \boxed{
 \text{Lean + MCTS + RL}
 }
-
 $$
 
 ↓
@@ -2428,7 +2194,6 @@ $$
 \boxed{
 \text{self-generated proof experience}
 }
-
 $$
 
 ↓
@@ -2437,7 +2202,6 @@ $$
 \boxed{
 \text{repeated training/search}
 }
-
 $$
 
 ↓
@@ -2446,7 +2210,6 @@ $$
 \boxed{
 \text{test-time RL}
 }
-
 $$
 
 这些关键数字和阶段来自 Nature 的公开方法。([Nature][1])
@@ -2469,14 +2232,12 @@ $$
 +
 \text{自己训练 scalar value head}
 }
-
 $$
 
 而不是：
 
 $$
 \text{寻找一个现成的 value LLM}.
-
 $$
 
 特别值得参考的是 Stanford Lean Club 的 `lean-ebm`，其公开设计正是“pretrained math LLM + scalar energy/value head”，但目前应把它视为研究方向/原型，而不是成熟的 AlphaProof value checkpoint。([GitHub][6])
@@ -2510,7 +2271,6 @@ h=f_\omega(s)\\
 \downarrow\\
 \text{MCTS again}
 \end{array}}
-
 $$
 
 而且**第一版完全不需要 TTT**。
@@ -2525,7 +2285,6 @@ $$
 +
 \text{MCTS}
 }
-
 $$
 
 确认 MCTS 确实比单纯 best-of-\(N\) / sampling 有优势。
@@ -2536,7 +2295,6 @@ $$
 \boxed{
 +\text{search-generated training}
 }
-
 $$
 
 最后才加：
@@ -2545,35 +2303,30 @@ $$
 \boxed{
 +\text{TTT}
 }
-
 $$
 
 否则三个变量同时变化，很难知道性能提升到底来自：
 
 $$
 \text{policy}
-
 $$
 
 还是：
 
 $$
 \text{value}
-
 $$
 
 还是：
 
 $$
 \text{MCTS}
-
 $$
 
 还是：
 
 $$
 \text{TTT}.
-
 $$
 
 **如果你下一步是准备真正实现这个系统，我建议下一轮直接进入最实用的层次：我可以给你设计一套“可实际跑起来的 AlphaProof-mini”训练方案，包括具体模型选择、Mathlib 数据如何抽取成 \((s,a,z)\)、value head 的 PyTorch 结构、MCTS 与 GPU batch inference 的接口、loss、replay buffer，以及第一版应该用多少 GPU/CPU 才能跑。**

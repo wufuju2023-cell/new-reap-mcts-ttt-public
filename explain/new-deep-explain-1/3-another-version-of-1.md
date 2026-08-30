@@ -45,7 +45,6 @@ MCTS的单次迭代（Simulation/Playout）严格分为四阶段，**所有数�
 
 $$
 a^* = \mathop{\arg\max}_{a \in \mathcal{A}(s_v)} \left[ Q(v, a) + c_{puct} \cdot P(v, a) \cdot \frac{\sqrt{\sum_{b} N(v, b)}}{1 + N(v, a)} \right]
-
 $$
 
 其中 $c_{puct} > 0$ 是探索常数。严格推导：该项是霍夫丁不等式在贝叶斯先验下的变体，平衡了经验均值 $Q$ 与探索奖励。分母 $1+N$ 防止除数零，$\sqrt{\sum N}$ 使得根节点的访问次数高时整体鼓励探索未访问动作。
@@ -54,7 +53,6 @@ $$
 
 $$
 N(v_{leaf}, a) = 0,\quad W(v_{leaf}, a) = 0,\quad Q(v_{leaf}, a) = 0,\quad P(v_{leaf}, a) = \frac{\exp(p_a)}{\sum_{b} \exp(p_b)}
-
 $$
 
 （此处策略网络输出logits，经Softmax归一化）。
@@ -67,7 +65,6 @@ Z =
 \mathcal{R}(s_{leaf}) & \text{if } s_{leaf} \in \mathcal{S}_{term} \\
 V_{\phi}(s_{leaf}) & \text{otherwise}
 \end{cases}
-
 $$
 
 注意：由于Lean执行确定性，若叶子非终态，$Z$ 是神经网络对最优未来奖励的期望近似。
@@ -76,21 +73,18 @@ $$
 
 $$
 N(v_t, a_t) \leftarrow N(v_t, a_t) + 1, \quad W(v_t, a_t) \leftarrow W(v_t, a_t) + Z
-
 $$
 
 由此，更新后的平均价值为：
 
 $$
 Q(v_t, a_t) \leftarrow \frac{W(v_t, a_t)}{N(v_t, a_t)}
-
 $$
 
 **树策略输出**：完成 $N_{sim}$ 次MCTS迭代后，CPU根据根节点的访问次数分布输出改进后的策略（用于指导实际证明动作）：
 
 $$
 \pi_{MCTS}(a | s_{root}) = \frac{N(v_{root}, a)^{1/\tau}}{\sum_{b} N(v_{root}, b)^{1/\tau}}
-
 $$
 
 其中 $\tau$ 为温度参数（$\tau \to 0$ 贪心，$\tau = 1$ 按比例采样）。
@@ -117,7 +111,6 @@ GPU端负责从海量（状态，MCTS目标）数据中学习逼近值函数和�
 
 $$
 \mathcal{D} = \left\{ \left( s_t, \ \boldsymbol{\pi}_{MCTS}^{(t)}, \ z_t \right) \right\}_{t=1}^{T}
-
 $$
 
 其中 $\boldsymbol{\pi}_{MCTS}^{(t)}$ 是该状态下的MCTS改进策略分布（如阶段IV所述），而 $z_t$ 是该状态下的**实际折扣回报**（由于 $\gamma=1$，$z_t$ 等于从该状态出发最终是否证明成功，即 $z_t = \mathcal{R}(s_T)$）。AlphaProof可能使用 $n$-步回报或直接使用最终稀疏奖励。
@@ -128,7 +121,6 @@ GPU参数通过最小化联合损失函数 $\mathcal{L}(\theta, \phi)$ 进行更
 
 $$
 \mathcal{L}(\theta, \phi) = \underbrace{\mathbb{E}_{(s, \boldsymbol{\pi}_{MCTS}, z) \sim \mathcal{D}} \left[ \text{KL}\left( \boldsymbol{\pi}_{MCTS}(\cdot|s) \ \big\| \ \pi_{\theta}(\cdot|s) \right) \right]}_{\text{策略改进项（交叉熵）}} + \underbrace{\lambda_v \cdot \mathbb{E}_{(s, z) \sim \mathcal{D}} \left[ \left( V_{\phi}(s) - z \right)^2 \right]}_{\text{价值回归项（MSE）}} + \underbrace{\lambda_{reg} \cdot \|\theta\|_2^2}_{\text{权重正则化}}
-
 $$
 
 其中：
@@ -143,12 +135,10 @@ $$
 
 $$
 \theta_{k+1} \leftarrow \theta_k - \eta \cdot \nabla_{\theta} \mathcal{L}_{\text{policy}}(\theta_k)
-
 $$
 
 $$
 \phi_{k+1} \leftarrow \phi_k - \eta \cdot \nabla_{\phi} \mathcal{L}_{\text{value}}(\phi_k)
-
 $$
 
 具体的梯度计算（链式法则展开）：

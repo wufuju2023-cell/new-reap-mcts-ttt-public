@@ -6,7 +6,6 @@
 
 $$
 \mathcal{C}(O) := \arg\min_{u:\ u\ \mathrm{models}\ O}\ \mathrm{K}(u),\qquad \mathrm{K}:\text{Kolmogorov 复杂度}
-
 $$
 
 ## 0.2 定理与推论
@@ -25,7 +24,6 @@ $$
 \mathcal{L}_{\mathrm{mine}}(\psi) :=
 -\mathbb{E}_{(O,c^{\mathrm{ok}})\sim\mathcal{D}_{\mathrm{verified}}}\big[\log M_\psi(c^{\mathrm{ok}}\,\vert\,O)\big]
 +\ \mathbb{E}\Big[\nabla_\psi \log M_\psi(c\,\vert\,O)\cdot \mathrm{kl}(c)\Big]
-
 $$
 
 - $\mathcal{D}_{\mathrm{verified}}$：塔（kernel 验证）正例 + $\mathrm{Refute}$ 桶（负例）；

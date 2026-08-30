@@ -7,7 +7,6 @@ V2 展开对象为算子链
 $$
 \mathrm{Chain} := \mathrm{Eff} \circ \mathrm{Mine} \circ \mathrm{Ver} \circ \mathrm{Prove}:
 \mathcal{O} \to \mathcal{T}
-
 $$
 
 - $\mathrm{Eff}$（实验/计算）：$\mathrm{EffSpec}\to \mathrm{Eff}(\mathrm{Obs}\times\mathrm{Trace})$，观测 $o\in\mathcal{O}$，仅入状态特征，不入奖励；
@@ -19,21 +18,18 @@ $$
 
 $$
 \mathrm{MetaGoal}(o): \quad \exists c\in\mathrm{Candidates}: \mathrm{kernel}(\mathrm{Prove}(c))=\mathrm{ok} \ \lor\ \mathrm{refutation}(c)\ \text{独立确认}
-
 $$
 
 奖励锚定（与 V2 全局一致，$\mathcal{I}_{\mathrm{probe}}$）：
 
 $$
 \mathcal{R}(s,a) := \mathbb{1}\{\mathrm{kernel}(s',\mathrm{script})=\mathrm{ok}\} \lor \mathbb{1}\{\mathrm{refutationVerified}(s,a)\}
-
 $$
 
 ## 0.3 状态与塔（沿用 spec 03）
 
 $$
 s = (\Gamma, L, H_{\mathrm{obs}}),\qquad L_{t+1} = L_t \cup \{t\} \iff \mathrm{gate}(t)=\mathrm{ok}
-
 $$
 
 塔指标：$\delta(t,L)=\#\{d\in L: d\in \mathrm{proof}(t)\}$，$\tau_g=\max_{t\in L_g}\delta(t,L_g)$（单调）。

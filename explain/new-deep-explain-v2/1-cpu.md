@@ -2,7 +2,6 @@
 
 $$
 \mathsf{Net}(s)\to (\pi_\theta(\cdot\mid s),V_\phi(s))
-
 $$
 
 其中策略网络和价值网络如何计算、如何训练，暂时全部视为黑盒；CPU 的任务是维护 Lean 证明环境、定义搜索空间、验证动作、维护 AND–OR 搜索树，并通过 MCTS 把神经网络给出的局部信息转化为全局证明搜索。
@@ -19,7 +18,6 @@ $$
 
 $$
 \mathcal P=(\Gamma_0,\Delta_0)
-
 $$
 
 其中：
@@ -31,28 +29,24 @@ $$
 
 $$
 s=(E,C,G)
-
 $$
 
 其中
 
 $$
 E=\text{Environment}
-
 $$
 
 表示当前 Lean 环境，
 
 $$
 C=\text{local context}
-
 $$
 
 表示局部变量、假设及其类型，
 
 $$
 G=(g_1,\ldots,g_m)
-
 $$
 
 表示当前尚未解决的 goals。
@@ -63,7 +57,6 @@ $$
 
 $$
 \boxed{\text{CPU 搜索的节点不是“文本”，而是 Lean 的逻辑状态 }s}
-
 $$
 
 这是整个系统最关键的一点。
@@ -76,7 +69,6 @@ $$
 
 $$
 x_t\xrightarrow{a_t}x_{t+1}.
-
 $$
 
 但这种状态没有严格语义保证。
@@ -89,7 +81,6 @@ $$
 s_{t+1}
 =
 T(s_t,a_t).
-
 $$
 
 但是这个 \(T\) 不是普通函数，因为 tactic 可能失败。
@@ -98,7 +89,6 @@ $$
 
 $$
 T:S\times A\rightharpoonup S.
-
 $$
 
 即
@@ -109,7 +99,6 @@ T(s,a)=
 s' & \text{if }a\text{ is a valid tactic in }s,\\
 \bot & \text{otherwise}.
 \end{cases}
-
 $$
 
 这里的 \(\bot\) 就是：
@@ -129,7 +118,6 @@ $$
 s_0=
 \{a,b,c:\mathbb N,\;h_1:a<b,\;h_2:b<c\}
 \vdash a<c
-
 $$
 
 执行
@@ -142,14 +130,12 @@ exact Nat.lt_trans h1 h2
 
 $$
 G=\varnothing
-
 $$
 
 因此到达终止状态：
 
 $$
 s_{\mathrm{terminal}}.
-
 $$
 
 而若执行：
@@ -162,14 +148,12 @@ Lean 会直接拒绝：
 
 $$
 T(s_0,\texttt{exact h1})=\bot.
-
 $$
 
 这就是 AlphaProof 环境极其重要的性质：
 
 $$
 \boxed{\text{reward/verifier 不需要“猜”一个中间步骤是否正确}}
-
 $$
 
 因为 Lean 本身就是 evaluator/verifier。Nature 对 AlphaProof 环境的定义也是：动作是文本形式的 Lean tactic，环境尝试执行它，并根据结果进入新的 proof state；最终证明必须经过 Lean kernel 验证。([Nature][1])
@@ -194,7 +178,6 @@ exact Nat.lt_trans h1 h2
 
 $$
 a\in A_{\text{syntax}}.
-
 $$
 
 ---
@@ -209,7 +192,6 @@ $$
 \text{Syntax}
 \longrightarrow
 \text{Elaborated term}.
-
 $$
 
 例如：
@@ -238,7 +220,6 @@ Lean 的 elaborator 最终把用户面对的语法转换到更加简单的 core 
 
 $$
 \Gamma\vdash t:P.
-
 $$
 
 如果成立，证明才真正成立。
@@ -253,7 +234,6 @@ $$
 \rightarrow
 \text{kernel checks proof term}
 }
-
 $$
 
 这也是为什么 AlphaProof 的“奖励”可以特别干净：关键最终事件是**形式证明成功**，不是语言模型自己的评分。Lean 官方文档明确强调，每个 tactic 最终构造 proof term，而 proof term 要经过 kernel 检查。([Lean Language][2])
@@ -266,7 +246,6 @@ $$
 
 $$
 a_t\neq\text{token}.
-
 $$
 
 在 AlphaProof 这种系统里，搜索树的一条边对应的是一个 **Lean tactic/action**，它通常以文本字符串表示。Nature 明确把动作定义成 Lean tactic text string。([Nature][1])
@@ -276,14 +255,12 @@ $$
 $$
 A(s)=\{a:
 a\text{ 是可以尝试施加到 }s\text{ 的 tactic}\}.
-
 $$
 
 理论上：
 
 $$
 |A(s)|=\infty
-
 $$
 
 或者至少极其巨大。
@@ -314,7 +291,6 @@ norm_num
 
 $$
 A=\{1,\ldots,361\}.
-
 $$
 
 这就是 AlphaProof CPU 搜索和标准 AlphaZero 之间的重要差别。
@@ -327,14 +303,12 @@ $$
 
 $$
 s
-
 $$
 
 如果 action 数量极其巨大，那么完整枚举：
 
 $$
 \forall a\in A(s)
-
 $$
 
 是不可能的。
@@ -343,14 +317,12 @@ $$
 
 $$
 \pi_\theta(a\mid s)
-
 $$
 
 把无限/巨大 action space 压缩成一个有限候选集：
 
 $$
 \{a_1,\ldots,a_K\}.
-
 $$
 
 于是 CPU 实际做：
@@ -359,7 +331,6 @@ $$
 a_1,\ldots,a_K
 \sim
 \pi_\theta(\cdot\mid s).
-
 $$
 
 然后逐个交给 Lean：
@@ -368,7 +339,6 @@ $$
 s'
 =
 T(s,a_i).
-
 $$
 
 这就变成：
@@ -377,7 +347,6 @@ $$
 \boxed{
 \text{LLM负责“提出可能有用的 tactic”，Lean负责“决定它是否真的合法”}
 }
-
 $$
 
 ---
@@ -392,7 +361,6 @@ $$
 \{\textsf{Invalid}\}
 \cup
 \{\textsf{Valid}(s',m)\}
-
 $$
 
 其中：
@@ -404,7 +372,6 @@ $$
 
 $$
 \mathsf{Solved}(s)\in\{0,1\}.
-
 $$
 
 定义：
@@ -413,14 +380,12 @@ $$
 \mathsf{Solved}(s)=1
 \iff
 G(s)=\varnothing.
-
 $$
 
 以及可能的：
 
 $$
 \mathsf{Failed}(s)
-
 $$
 
 用于 timeout / resource exhaustion / irrecoverable failure。
@@ -444,28 +409,24 @@ $$
 s_0
 \rightarrow
 \{P,Q\}.
-
 $$
 
 即一个目标变成两个子目标：
 
 $$
 g_1=P,\qquad g_2=Q.
-
 $$
 
 逻辑上：
 
 $$
 P\land Q
-
 $$
 
 成立，当且仅当
 
 $$
 P\text{ 成立}\quad\land\quad Q\text{ 成立}.
-
 $$
 
 因此这不是普通 OR 分支，而是：
@@ -474,7 +435,6 @@ $$
 s_{\mathrm{AND}}
 =
 (g_1,g_2).
-
 $$
 
 整个证明成功的条件为：
@@ -485,7 +445,6 @@ $$
 \operatorname{Solved}(g_1)
 \land
 \operatorname{Solved}(g_2).
-
 $$
 
 这就是 AND node。
@@ -504,14 +463,12 @@ Nature/AlphaProof 的正式描述明确指出，多 goal tactic 会产生独立 
 
 $$
 s
-
 $$
 
 可以选择多个 tactic：
 
 $$
 a_1,a_2,\ldots,a_n.
-
 $$
 
 只要存在一个成功：
@@ -519,7 +476,6 @@ $$
 $$
 \exists i,\quad
 T(s,a_i)\text{ 可导向证明}.
-
 $$
 
 因此：
@@ -528,14 +484,12 @@ $$
 V(s)
 =
 \max_i V(s,a_i)
-
 $$
 
 从逻辑意义说，是：
 
 $$
 OR.
-
 $$
 
 ---
@@ -546,14 +500,12 @@ $$
 
 $$
 g_1,\ldots,g_m,
-
 $$
 
 则必须：
 
 $$
 \forall i,\quad g_i\text{ solved}.
-
 $$
 
 因此：
@@ -562,14 +514,12 @@ $$
 V(s_{\mathrm{AND}})
 =
 \min_iV(g_i)
-
 $$
 
 这就是 AlphaProof 里很关键的：
 
 $$
 \boxed{\text{AND aggregation}=\min}
-
 $$
 
 原因不是某种经验技巧，而是其 reward / return 定义本身就是按**最难的证明分支**决定。Nature 明确给出：多 subgoal 情况下 return 使用这些 subgoal returns 的 minimum，而不是 sum。([Nature][1])
@@ -588,14 +538,12 @@ r=
 +1 & \text{证明成功}\\
 -1 & \text{失败}
 \end{cases}
-
 $$
 
 它采用的是一种非常特殊但很自然的 shaping：
 
 $$
 \boxed{r_t=-1}
-
 $$
 
 对于每一次 tactic application。
@@ -604,7 +552,6 @@ $$
 
 $$
 G=-L.
-
 $$
 
 也就是说：
@@ -613,7 +560,6 @@ $$
 \boxed{
 \text{证明越短，return 越大}
 }
-
 $$
 
 例如：
@@ -622,35 +568,30 @@ $$
 
 $$
 L_A=20
-
 $$
 
 则
 
 $$
 G_A=-20.
-
 $$
 
 证明 B：
 
 $$
 L_B=40
-
 $$
 
 则
 
 $$
 G_B=-40.
-
 $$
 
 因此：
 
 $$
 -20>-40
-
 $$
 
 所以系统更偏好 A。
@@ -669,7 +610,6 @@ r_t=
 +1 & \text{成功}\\
 0 & \text{其他}
 \end{cases}
-
 $$
 
 那么：
@@ -678,14 +618,12 @@ $$
 
 $$
 G=1.
-
 $$
 
 这对 theorem proving 不理想，因为：
 
 $$
 \text{proof length}
-
 $$
 
 本身是非常重要的搜索成本。
@@ -694,21 +632,18 @@ $$
 
 $$
 r_t=-1
-
 $$
 
 导致：
 
 $$
 G_t=-\text{remaining steps}.
-
 $$
 
 所以 value network 的语义可以直接解释为：
 
 $$
 V(s)\approx-\text{expected remaining proof steps}.
-
 $$
 
 这也是 AlphaProof 的 value 定义的重要直觉。Nature 给出的定义明确说，\(V\) 的语义对应于解决当前目标还剩多少步的负数。([PubMed Central (PMC)][5])
@@ -727,7 +662,6 @@ s_1
 s_2
 \xrightarrow{c}
 s_T
-
 $$
 
 一共 3 步。
@@ -736,7 +670,6 @@ $$
 
 $$
 G(s)=-3.
-
 $$
 
 而如果：
@@ -747,21 +680,18 @@ s
 s_3
 \xrightarrow{e}
 s_T
-
 $$
 
 只有 2 步：
 
 $$
 G(s)=-2.
-
 $$
 
 所以：
 
 $$
 V(s,d)>V(s,a).
-
 $$
 
 因此价值网络其实是在学习一个非常接近：
@@ -770,7 +700,6 @@ $$
 \boxed{
 V(s)=-d^*(s)
 }
-
 $$
 
 的函数，其中
@@ -780,7 +709,6 @@ d^*(s)
 =
 \min_{\pi}
 \{\text{policy }\pi\text{ 从 }s\text{ 到 proof 的步数}\}.
-
 $$
 
 严格地说，训练中的 value 是 expected return，不一定等于最短证明距离；但搜索与训练不断逼近这个 quantity。
@@ -794,7 +722,6 @@ $$
 $$
 \mathcal M=
 (S,A,T,r)
-
 $$
 
 一个 deterministic 单人 sequential decision process。
@@ -803,7 +730,6 @@ $$
 
 $$
 T(s,a)
-
 $$
 
 基本是确定性的。
@@ -814,7 +740,6 @@ Go 中：
 
 $$
 s_t,a_t\rightarrow s_{t+1}
-
 $$
 
 之后轮到另一个 player。
@@ -823,7 +748,6 @@ $$
 
 $$
 \boxed{\text{single-player deterministic planning}}
-
 $$
 
 不存在对手。
@@ -832,7 +756,6 @@ $$
 
 $$
 \text{proof planning}.
-
 $$
 
 ---
@@ -843,7 +766,6 @@ $$
 
 $$
 n=(s,N,W,\mathcal E)
-
 $$
 
 其中：
@@ -857,21 +779,18 @@ $$
 
 $$
 e=(s,a,s')
-
 $$
 
 附带：
 
 $$
 N(s,a)
-
 $$
 
 以及 aggregated value：
 
 $$
 V(s,a).
-
 $$
 
 AlphaProof 实现里确实对每个 state-action pair 维护 visit count 与 aggregated search value。([PubMed Central (PMC)][5])
@@ -892,7 +811,6 @@ Evaluation
 \rightarrow
 Backpropagation
 }
-
 $$
 
 其中 AlphaProof 的描述使用 selection / expansion / backpropagation，leaf value 由 proof network 提供。([PubMed Central (PMC)][5])
@@ -907,7 +825,6 @@ CPU 端真正应该实现的是：
 
 $$
 s_0
-
 $$
 
 不断根据某个 UCB/PUCT criterion 选择 action：
@@ -916,7 +833,6 @@ $$
 a^*
 =
 \arg\max_a U(s,a).
-
 $$
 
 AlphaProof 使用 PUCT 类公式。其核心结构为：
@@ -928,7 +844,6 @@ Q(s,a)
 +
 c(s)
 \frac{\pi(a|s)^{1/\tau}\sqrt{N(s)}}{1+N(s,a)}
-
 $$
 
 其中具体记号在论文中有定义上的变体，但结构就是：
@@ -937,7 +852,6 @@ $$
 \boxed{
 \text{exploitation}+\text{exploration}
 }
-
 $$
 
 即：
@@ -946,7 +860,6 @@ $$
 Q
 +
 U.
-
 $$
 
 ([PubMed Central (PMC)][5])
@@ -961,14 +874,12 @@ $$
 
 $$
 N(s,a)=\text{过去多少 simulation 选择过 }a.
-
 $$
 
 如果
 
 $$
 N(s,a)=0
-
 $$
 
 说明还没有真正搜索过。
@@ -981,7 +892,6 @@ $$
 
 $$
 Q(s,a)
-
 $$
 
 是当前搜索统计中 action \(a\) 的 exploit value。
@@ -990,7 +900,6 @@ AlphaProof 中不是直接把 reward average 简单写成标准 \([0,1]\) Q，�
 
 $$
 Q(s,a)=\gamma^{-V(s,a)-1}
-
 $$
 
 其中 \(V(s,a)\) 是 aggregated search value。([PubMed Central (PMC)][5])
@@ -1005,21 +914,18 @@ $$
 
 $$
 V(s,a)
-
 $$
 
 大致是：
 
 $$
 -\text{remaining steps}.
-
 $$
 
 例如：
 
 $$
 V=-3
-
 $$
 
 意味着大约还需要 3 步。
@@ -1028,7 +934,6 @@ $$
 
 $$
 V=-20
-
 $$
 
 说明离成功更远。
@@ -1039,7 +944,6 @@ $$
 
 $$
 Q(s,a)=\gamma^{-V(s,a)-1}
-
 $$
 
 随着 \(V\) 增大而增大。
@@ -1048,7 +952,6 @@ $$
 
 $$
 V=-3>-20
-
 $$
 
 会对应更有利的 \(Q\)。
@@ -1057,7 +960,6 @@ $$
 
 $$
 \text{negative step count}
-
 $$
 
 而 \(Q\) 被重新参数化成更加适合 PUCT selection 的尺度。([PubMed Central (PMC)][5])
@@ -1073,21 +975,18 @@ Q(s,a)
 +
 c(s)
 \frac{P(s,a)\sqrt{N(s)}}{1+N(s,a)}
-
 $$
 
 其中
 
 $$
 P(s,a)=\pi_\theta(a|s)^{1/\tau}.
-
 $$
 
 如果：
 
 $$
 N(s,a)=0
-
 $$
 
 那么 exploration term 很大。
@@ -1098,7 +997,6 @@ $$
 N(s,a)\uparrow
 \Rightarrow
 U(s,a)\downarrow.
-
 $$
 
 所以系统不会永远只搜索一个 action。
@@ -1111,7 +1009,6 @@ $$
 
 $$
 \pi_\theta(a|s).
-
 $$
 
 再修改：
@@ -1120,35 +1017,30 @@ $$
 P(a|s)
 \propto
 \pi_\theta(a|s)^{1/\tau}.
-
 $$
 
 当：
 
 $$
 \tau<1
-
 $$
 
 分布更尖锐：
 
 $$
 \text{high-probability actions得到更多优先级}.
-
 $$
 
 当：
 
 $$
 \tau>1
-
 $$
 
 分布更平坦：
 
 $$
 \text{鼓励探索更多 action}.
-
 $$
 
 AlphaProof 的 PUCT 中确实对 policy prior 使用了 temperature 修正。([PubMed Central (PMC)][5])
@@ -1163,7 +1055,6 @@ AlphaProof 的 PUCT 中确实对 policy prior 使用了 temperature 修正。([P
 
 $$
 \pi_\theta(\cdot|s)
-
 $$
 
 是一个 autoregressive LLM。
@@ -1175,7 +1066,6 @@ $$
 =
 \prod_{t=1}^{|a|}
 \pi_\theta(a_t|s,a_{<t}).
-
 $$
 
 但是 tactic 是字符串：
@@ -1200,14 +1090,12 @@ $$
 \{a_1,\ldots,a_K\}
 \sim
 \pi_\theta(\cdot|s).
-
 $$
 
 这就是所谓：
 
 $$
 \boxed{\text{sampled action expansion}}
-
 $$
 
 AlphaProof 论文明确指出，它针对开放式 tactic space 进行 action sampling。([Nature][1])
@@ -1220,7 +1108,6 @@ AlphaProof 论文明确指出，它针对开放式 tactic space 进行 action sa
 
 $$
 s_L.
-
 $$
 
 CPU 请求：
@@ -1229,28 +1116,24 @@ $$
 \mathsf{Net}(s_L)
 =
 (\pi_\theta,V_\phi).
-
 $$
 
 GPU 给出：
 
 $$
 a_1,\ldots,a_K.
-
 $$
 
 CPU 对每一个：
 
 $$
 a_i
-
 $$
 
 运行：
 
 $$
 T(s_L,a_i).
-
 $$
 
 结果分三种。
@@ -1259,7 +1142,6 @@ $$
 
 $$
 T(s_L,a_i)=\bot.
-
 $$
 
 直接丢弃。
@@ -1268,7 +1150,6 @@ $$
 
 $$
 T(s_L,a_i)=s_i.
-
 $$
 
 加入搜索树。
@@ -1277,7 +1158,6 @@ $$
 
 $$
 \mathsf{Solved}(s_i)=1.
-
 $$
 
 立即得到完整 proof candidate。
@@ -1290,7 +1170,6 @@ $$
 
 $$
 \pi_\theta
-
 $$
 
 只是一个统计模型。
@@ -1299,21 +1178,18 @@ $$
 
 $$
 a\sim\pi_\theta
-
 $$
 
 并不能保证：
 
 $$
 T(s,a)\neq\bot.
-
 $$
 
 更不能保证最终：
 
 $$
 \Gamma\vdash P.
-
 $$
 
 因此必须：
@@ -1324,7 +1200,6 @@ $$
 \neq
 \text{logical validity}
 }
-
 $$
 
 真正决定 proof validity 的是 Lean elaborator + kernel。
@@ -1339,28 +1214,24 @@ Lean 官方文档明确说明 kernel 对 elaborated proof term 做最终 type ch
 
 $$
 a_1,\quad a_2.
-
 $$
 
 结果却是：
 
 $$
 T(s,a_1)=s'
-
 $$
 
 和
 
 $$
 T(s,a_2)=s'.
-
 $$
 
 那么从搜索角度：
 
 $$
 a_1,a_2
-
 $$
 
 没有必要产生两个完全独立的 state nodes。
@@ -1373,7 +1244,6 @@ AlphaProof 的环境会把导致相同 Lean state 的 tactics 合并，并在若
 
 $$
 \boxed{\text{tree search over a quotient state graph}}
-
 $$
 
 而不是纯粹数学意义的树。
@@ -1382,7 +1252,6 @@ $$
 
 $$
 s_1\sim s_2
-
 $$
 
 定义为“二者逻辑上/规范化后等价”。
@@ -1391,7 +1260,6 @@ $$
 
 $$
 S/\sim.
-
 $$
 
 这是一个非常关键的工程优化。
@@ -1404,14 +1272,12 @@ $$
 
 $$
 a_1,a_2
-
 $$
 
 可能得到相同 state：
 
 $$
 T(s,a_1)=T(s,a_2)=s'.
-
 $$
 
 但：
@@ -1420,7 +1286,6 @@ $$
 \operatorname{cost}(a_1)
 <
 \operatorname{cost}(a_2).
-
 $$
 
 例如：
@@ -1439,7 +1304,6 @@ C(a)
 \lambda_1\cdot |a|
 +
 \lambda_2\cdot t_{\mathrm{exec}}(a).
-
 $$
 
 然后保留：
@@ -1448,7 +1312,6 @@ $$
 a^*
 =
 \arg\min_{a:T(s,a)=s'}C(a).
-
 $$
 
 AlphaProof 的实际方法正是用与字符串长度、执行时间线性相关的 cost 来处理这类 duplicate-state tactics。([PubMed Central (PMC)][5])
@@ -1461,7 +1324,6 @@ AlphaProof 的实际方法正是用与字符串长度、执行时间线性相关
 
 $$
 s_L
-
 $$
 
 没有成功，也没有明显终止。
@@ -1470,14 +1332,12 @@ CPU 请求 GPU：
 
 $$
 V_\phi(s_L).
-
 $$
 
 得到：
 
 $$
 \hat V_L.
-
 $$
 
 它可以理解为：
@@ -1486,14 +1346,12 @@ $$
 \hat V_L
 \approx
 \mathbb E[G_t\mid s_L].
-
 $$
 
 由于：
 
 $$
 G_t=-\text{remaining steps},
-
 $$
 
 因此：
@@ -1501,14 +1359,12 @@ $$
 $$
 \hat V_L\approx
 -\mathbb E[\text{remaining proof steps}\mid s_L].
-
 $$
 
 例如：
 
 $$
 V_\phi(s_L)=-2.7
-
 $$
 
 可以理解成：
@@ -1530,14 +1386,12 @@ s_1
 \xrightarrow{a_1}
 s_2
 \rightarrow\cdots\rightarrow s_L.
-
 $$
 
 叶子的估计：
 
 $$
 V_L.
-
 $$
 
 然后沿路径反向更新：
@@ -1546,14 +1400,12 @@ $$
 (s_{L-1},a_{L-1}),
 \dots,
 (s_0,a_0).
-
 $$
 
 最基本统计：
 
 $$
 N(s,a)\leftarrow N(s,a)+1
-
 $$
 
 以及 value aggregate：
@@ -1565,7 +1417,6 @@ V_{\text{agg}}(s,a)
 \left(
 V_{\text{agg}}(s,a),V_L
 \right).
-
 $$
 
 具体 AlphaProof 使用其定义下的 aggregated search value，并在 AND node 上进行特殊聚合。([PubMed Central (PMC)][5])
@@ -1578,7 +1429,6 @@ $$
 
 $$
 P\land Q.
-
 $$
 
 假设：
@@ -1587,14 +1437,12 @@ $$
 V(P)=-2,
 \qquad
 V(Q)=-10.
-
 $$
 
 整体证明至少需要解决最难的：
 
 $$
 Q.
-
 $$
 
 所以：
@@ -1605,14 +1453,12 @@ V(P\land Q)
 \min(-2,-10)
 =
 -10.
-
 $$
 
 这完全符合：
 
 $$
 G=-\text{longest unresolved proof branch}.
-
 $$
 
 因此在 AND node：
@@ -1623,14 +1469,12 @@ V_{\mathrm{AND}}
 =
 \min_iV_i
 }
-
 $$
 
 而不是：
 
 $$
 \sum_iV_i.
-
 $$
 
 Nature 明确指出 AlphaProof 在多 subgoal 情况下使用 minimum，语义对应“最长证明分支”。([Nature][1])
@@ -1643,7 +1487,6 @@ Nature 明确指出 AlphaProof 在多 subgoal 情况下使用 minimum，语义�
 
 $$
 s_0\to s_1\to s_2\to\cdots\to s_T.
-
 $$
 
 但 theorem proving：
@@ -1652,7 +1495,6 @@ $$
 s_0
 \xrightarrow{a}
 \{g_1,g_2,g_3\}.
-
 $$
 
 然后：
@@ -1660,7 +1502,6 @@ $$
 $$
 g_1
 \rightarrow \cdots
-
 $$
 
 同时：
@@ -1668,7 +1509,6 @@ $$
 $$
 g_2
 \rightarrow \cdots
-
 $$
 
 以及：
@@ -1676,7 +1516,6 @@ $$
 $$
 g_3
 \rightarrow \cdots.
-
 $$
 
 因此搜索结构实际上是：
@@ -1687,7 +1526,6 @@ OR\text{ nodes}
 +
 AND\text{ nodes}
 }
-
 $$
 
 这才是完整的 AlphaProof CPU-side tree。
@@ -1702,28 +1540,24 @@ $$
 
 $$
 \pi(a_1|s)=0.7
-
 $$
 
 而：
 
 $$
 \pi(a_2|s)=0.001
-
 $$
 
 那么很可能 search 永远只看：
 
 $$
 a_1.
-
 $$
 
 可是：
 
 $$
 a_2
-
 $$
 
 可能恰恰是证明问题需要的关键 lemma。
@@ -1734,7 +1568,6 @@ AlphaProof 使用：
 
 $$
 \boxed{\text{progressive sampling}}
-
 $$
 
 根据某个节点被访问的次数动态增加 candidate tactics。
@@ -1743,7 +1576,6 @@ $$
 
 $$
 n(s)\le C N(s)^\alpha
-
 $$
 
 时，再从 policy 中采样额外的 \(K\) 个 tactics。([PubMed Central (PMC)][5])
@@ -1762,7 +1594,6 @@ $$
 
 $$
 |\mathcal A_s|=K
-
 $$
 
 永远固定。
@@ -1771,14 +1602,12 @@ $$
 
 $$
 N(s)\to\infty
-
 $$
 
 你仍然只在：
 
 $$
 K
-
 $$
 
 个候选动作里搜索。
@@ -1787,7 +1616,6 @@ $$
 
 $$
 P(a\text{ discovered})=0
-
 $$
 
 对于从未采到的 action。
@@ -1801,7 +1629,6 @@ $$
 \rightarrow\infty
 \quad
 \text{as }N(s)\rightarrow\infty.
-
 $$
 
 于是随着计算预算增加：
@@ -1810,7 +1637,6 @@ $$
 \boxed{
 \text{search breadth gradually increases}
 }
-
 $$
 
 这非常接近传统 best-first search 中“把更多计算给真正有希望的 frontier”的思想。
@@ -1823,7 +1649,6 @@ $$
 
 $$
 Q\in[0,1].
-
 $$
 
 越大越好。
@@ -1832,28 +1657,24 @@ $$
 
 $$
 V\le 0
-
 $$
 
 而且：
 
 $$
 V\approx-\text{steps}.
-
 $$
 
 因此：
 
 $$
 V=-2
-
 $$
 
 比：
 
 $$
 V=-20
-
 $$
 
 更好。
@@ -1871,7 +1692,6 @@ Nature 给出的 AlphaProof 特殊设计之一，就是在 progressive sampling 
 $$
 \min_{\pi}
 \mathbb E_\pi[L]
-
 $$
 
 subject to
@@ -1879,21 +1699,18 @@ subject to
 $$
 T(s_0,a_0)\to s_1
 \to\cdots\to s_T,
-
 $$
 
 并要求：
 
 $$
 G(s_T)=\varnothing.
-
 $$
 
 其中：
 
 $$
 L=T
-
 $$
 
 是 proof length。
@@ -1904,7 +1721,6 @@ $$
 \boxed{
 \text{find a valid path from }s_0\text{ to a terminal solved state}
 }
-
 $$
 
 并且目标是：
@@ -1913,7 +1729,6 @@ $$
 \boxed{
 \min \text{ path length}
 }
-
 $$
 
 同时受到 action branching factor 极大的限制。
@@ -1933,14 +1748,12 @@ L:
 s\xrightarrow{a_1}\cdots\xrightarrow{a_L}s_T,\;
 \mathsf{Solved}(s_T)=1
 \}.
-
 $$
 
 则：
 
 $$
 V^*(s)=-d^*(s).
-
 $$
 
 如果 state 会产生 AND subgoals，则递归定义：
@@ -1953,7 +1766,6 @@ d^*(s)
 1+
 \min_{a}
 d^*(T(s,a)).
-
 $$
 
 ### AND state
@@ -1962,7 +1774,6 @@ $$
 
 $$
 s=(g_1,\ldots,g_k)
-
 $$
 
 则：
@@ -1971,7 +1782,6 @@ $$
 d^*(s)
 =
 \max_i d^*(g_i)
-
 $$
 
 在 AlphaProof 的 return 语义下尤其对应最难 branch 的长度。
@@ -1982,7 +1792,6 @@ $$
 V^*(s)
 =
 -d^*(s).
-
 $$
 
 这给出了整个 CPU search 一个非常干净的数学解释。
@@ -1995,7 +1804,6 @@ $$
 
 $$
 V^*(s)=-d^*(s).
-
 $$
 
 对于 OR：
@@ -2004,7 +1812,6 @@ $$
 d^*(s)
 =
 1+\min_a d^*(s_a).
-
 $$
 
 所以：
@@ -2014,21 +1821,18 @@ V^*(s)
 =
 -1+
 \max_a V^*(s_a).
-
 $$
 
 因此 OR 本质上是：
 
 $$
 \max.
-
 $$
 
 对于 AND：
 
 $$
 d^*(s)=\max_i d^*(g_i)
-
 $$
 
 所以：
@@ -2039,7 +1843,6 @@ V^*(s)
 -\max_i d^*(g_i)
 =
 \min_i V^*(g_i).
-
 $$
 
 所以：
@@ -2048,14 +1851,12 @@ $$
 \boxed{
 OR\rightarrow \max
 }
-
 $$
 
 $$
 \boxed{
 AND\rightarrow \min
 }
-
 $$
 
 不是拍脑袋的 MCTS trick，而是由 reward 定义和逻辑合取直接推出的。
@@ -2070,28 +1871,24 @@ $$
 \boxed{
 \text{Lean State}
 }
-
 $$
 
 ↓
 
 $$
 \text{PUCT Selection}
-
 $$
 
 ↓
 
 $$
 (s,a)
-
 $$
 
 ↓
 
 $$
 \text{Lean tactic execution}
-
 $$
 
 ↓
@@ -2102,7 +1899,6 @@ $$
 s' & \text{valid}\\
 s_{\mathrm{terminal}} & \text{solved}
 \end{cases}
-
 $$
 
 ↓
@@ -2111,7 +1907,6 @@ $$
 
 $$
 s_L
-
 $$
 
 ↓
@@ -2120,7 +1915,6 @@ $$
 
 $$
 (\pi_\theta,V_\phi)
-
 $$
 
 ↓
@@ -2129,7 +1923,6 @@ $$
 
 $$
 a_1,\ldots,a_K
-
 $$
 
 ↓
@@ -2138,7 +1931,6 @@ CPU Lean verification：
 
 $$
 T(s_L,a_i)
-
 $$
 
 ↓
@@ -2151,7 +1943,6 @@ backprop：
 
 $$
 N,\;V
-
 $$
 
 ↓
@@ -2164,14 +1955,12 @@ $$
 
 $$
 \boxed{\text{proof found}}
-
 $$
 
 或者：
 
 $$
 \boxed{\text{simulation budget exhausted}}.
-
 $$
 
 AlphaProof 的实际推理过程也是一个 search attempt 持续保留同一搜索树，而不是每一步都提交一个动作后重启整个搜索；这与单人、确定性 theorem-proving 环境有关。([PubMed Central (PMC)][5])
@@ -2188,14 +1977,12 @@ $$
 s_0
 \to a_0
 \to s_1.
-
 $$
 
 一旦落子：
 
 $$
 a_0
-
 $$
 
 实际执行了。
@@ -2208,21 +1995,18 @@ $$
 
 $$
 s_0
-
 $$
 
 中的多个 candidate tactics 都只是：
 
 $$
 \text{hypothetical branches}.
-
 $$
 
 Lean 是 deterministic 的：
 
 $$
 T(s,a)
-
 $$
 
 可以重复计算。
@@ -2233,7 +2017,6 @@ $$
 \boxed{
 \text{整个证明过程可以共享一棵 search tree}
 }
-
 $$
 
 搜索器无需像棋类一样每做出一个最终动作，就把树根移动到该动作之后。
@@ -2261,7 +2044,6 @@ $$
 &\text{Search scheduling}\\
 &\text{Replay / trajectory recording}
 \end{aligned}}
-
 $$
 
 ## GPU
@@ -2273,7 +2055,6 @@ $$
 &s\mapsto V_\phi(s)\\
 &\theta,\phi\text{ update}
 \end{aligned}}
-
 $$
 
 这个边界非常重要。
@@ -2282,14 +2063,12 @@ $$
 
 $$
 \boxed{\text{CPU 是 symbolic world model + search controller}}
-
 $$
 
 而：
 
 $$
 \boxed{\text{GPU 是 learned heuristic}}
-
 $$
 
 ---
@@ -2390,7 +2169,6 @@ ANDNode:
 
 $$
 \text{ProofTree}
-
 $$
 
 实际上是：
@@ -2399,7 +2177,6 @@ $$
 \text{OR nodes}
 \leftrightarrow
 \text{AND nodes}.
-
 $$
 
 ---
@@ -2410,14 +2187,12 @@ $$
 
 $$
 s_0\vdash P\land Q.
-
 $$
 
 policy 给：
 
 $$
 \pi(\texttt{constructor}|s_0)=0.8
-
 $$
 
 CPU 执行：
@@ -2431,7 +2206,6 @@ constructor
 $$
 s_1=
 \operatorname{AND}(P,Q).
-
 $$
 
 搜索树：
@@ -2450,26 +2224,22 @@ $$
 
 $$
 V(P)=-2
-
 $$
 
 $$
 V(Q)=-8.
-
 $$
 
 那么：
 
 $$
 V(s_1)=\min(-2,-8)=-8.
-
 $$
 
 于是根节点看到：
 
 $$
 \texttt{constructor}
-
 $$
 
 对应大约：
@@ -2477,7 +2247,6 @@ $$
 $$
 V(s_0,\texttt{constructor})
 \approx -9
-
 $$
 
 因为还需要执行 `constructor` 本身，然后解决最长分支。
@@ -2486,35 +2255,30 @@ $$
 
 $$
 a_2
-
 $$
 
 最终需要 15 步，那么：
 
 $$
 V(s_0,a_2)\approx -15.
-
 $$
 
 所以：
 
 $$
 -9>-15,
-
 $$
 
 search 更偏好：
 
 $$
 \texttt{constructor}.
-
 $$
 
 这就是：
 
 $$
 \boxed{\text{formal logic structure}+\text{RL return}+\text{MCTS}}
-
 $$
 
 三者真正结合的地方。
@@ -2538,14 +2302,12 @@ h2 : b < c
 
 $$
 s=(E,C,G,\text{metacontext},\ldots).
-
 $$
 
 字符串只是：
 
 $$
 \operatorname{Obs}(s)
-
 $$
 
 即 state observation。
@@ -2560,14 +2322,12 @@ x
 \xrightarrow{\text{GPU}}
 (\pi,V)
 }
-
 $$
 
 而不是：
 
 $$
 \text{string}\xrightarrow{} \text{Lean}.
-
 $$
 
 CPU 保存的必须是真实的 Lean state / 可恢复 snapshot。
@@ -2582,7 +2342,6 @@ AlphaProof 环境特别强调 save/restore/unique identification of Lean tactic 
 
 $$
 10^4
-
 $$
 
 个 search simulations。
@@ -2591,7 +2350,6 @@ $$
 
 $$
 T(s_i,a_i)
-
 $$
 
 之间大多彼此独立。
@@ -2600,7 +2358,6 @@ $$
 
 $$
 \{(s_i,a_i)\}_{i=1}^N
-
 $$
 
 并行执行。
@@ -2615,7 +2372,6 @@ AlphaProof 的环境明确设计成能够：
 
 $$
 \boxed{\text{distributed / parallel symbolic search scheduler}}
-
 $$
 
 而不是一个简单的 Python recursive DFS。
@@ -2639,21 +2395,18 @@ GPU 不需要知道：
 
 $$
 x=\operatorname{encode}(s)
-
 $$
 
 然后返回：
 
 $$
 \pi(a|s)
-
 $$
 
 以及：
 
 $$
 V(s).
-
 $$
 
 所以接口可以抽象成：
@@ -2667,14 +2420,12 @@ f_\theta:
 \times
 \mathbb R
 }
-
 $$
 
 CPU 则负责把：
 
 $$
 \mathcal S
-
 $$
 
 真正实现出来。
@@ -2689,7 +2440,6 @@ $$
 \mathcal G_{\mathrm{Lean}}
 =
 (\mathcal S,\mathcal E)
-
 $$
 
 其中：
@@ -2698,7 +2448,6 @@ $$
 (s,a,s')\in\mathcal E
 \iff
 T(s,a)=s'.
-
 $$
 
 这是**真实证明状态图**。
@@ -2709,7 +2458,6 @@ $$
 \mathcal G_{\mathrm{search}}
 \subseteq
 \mathcal G_{\mathrm{Lean}}
-
 $$
 
 这是目前 MCTS 探索过的子图。
@@ -2720,7 +2468,6 @@ $$
 \boxed{
 \text{Lean defines the true transition graph}
 }
-
 $$
 
 而：
@@ -2729,21 +2476,18 @@ $$
 \boxed{
 \text{MCTS only explores a tiny adaptive subgraph}
 }
-
 $$
 
 而 policy network 决定的是：
 
 $$
 \text{which edges are worth examining first}.
-
 $$
 
 value network 决定的是：
 
 $$
 \text{which unexplored regions look promising}.
-
 $$
 
 这是理解整个 AlphaProof 类架构最重要的数学视角之一。
@@ -2758,21 +2502,18 @@ $$
 \min_{\text{search allocation}}
 \quad
 \mathbb E[\text{time to find proof}]
-
 $$
 
 subject to
 
 $$
 T(s,a)
-
 $$
 
 必须由 Lean 验证，并且最终：
 
 $$
 G(s_T)=\varnothing.
-
 $$
 
 神经网络提供：
@@ -2781,7 +2522,6 @@ $$
 \pi_\theta(a|s),
 \quad
 V_\phi(s),
-
 $$
 
 MCTS 则决定：
@@ -2790,7 +2530,6 @@ $$
 \boxed{
 \text{在哪些 }(s,a)\text{ 上花 CPU 预算}
 }
-
 $$
 
 Lean 决定：
@@ -2799,7 +2538,6 @@ $$
 \boxed{
 \text{哪些转移是真实存在的}
 }
-
 $$
 
 reward 决定：
@@ -2808,7 +2546,6 @@ $$
 \boxed{
 \text{什么叫“更好的证明路径”}
 }
-
 $$
 
 ---
@@ -2825,7 +2562,6 @@ $$
 \textbf{MCTS} & \text{负责搜索资源分配}\\
 \textbf{policy/value} & \text{负责搜索启发式}
 \end{array}}
-
 $$
 
 其中优先级严格是：
@@ -2838,28 +2574,24 @@ $$
 \text{Search heuristic}
 >
 \text{Neural prediction}.
-
 $$
 
 换句话说，即使 GPU 完全错了：
 
 $$
 \pi_\theta,\;V_\phi
-
 $$
 
 只会导致：
 
 $$
 \text{搜索效率下降}.
-
 $$
 
 但是如果 Lean environment/kernel 错了，则：
 
 $$
 \boxed{\text{整个证明系统的语义基础被破坏}}
-
 $$
 
 这也是 formal theorem proving 和一般 LLM reasoning 最大的结构性区别。

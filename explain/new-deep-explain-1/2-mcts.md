@@ -12,14 +12,12 @@
 
 $$
 \mathcal{A}(n) := \{ a \in \mathcal{A} \mid T(s_n, a) \neq \varnothing \}
-
 $$
 
 每个有向边$e = (n, a)$（$ a \in \mathcal{A}(n)$）存储四元组统计量：
 
 $$
 \Phi(e) = \big( N(e), \; W(e), \; Q(e), \; P(e) \big) \in \mathbb{N}_{\ge 0} \times \mathbb{R} \times [-1,1] \times [0,1]
-
 $$
 
 其中 $P(e)$ 在边首次初始化时由 GPU 前向推理赋予，且在搜索周期内**冻结不变**。对于尚未访问的边，定义 $N(e)=0, W(e)=0, Q(e)=0$。节点还需存储一个布尔标记 $\text{Expanded}(n)$，指示其所有合法子边是否已被初始化。
@@ -36,14 +34,12 @@ MCTS在固定模拟预算$N_{\text{sim}}$内反复执行以下四步。每一步
 
 $$
 a^{(n)} = \underset{a \in \mathcal{A}(n)}{\arg\max} \; U(n, a)
-
 $$
 
 其中评分$U(n, a)$精确定义为：
 
 $$
 U(n, a) = Q(n, a) + c_{\text{puct}} \cdot P(n, a) \cdot \frac{\sqrt{ \sum_{b \in \mathcal{A}(n)} N(n, b) }}{1 + N(n, a)}
-
 $$
 
 **深入分析**：
@@ -63,14 +59,12 @@ $$
 
 $$
 (\mathbf{p}, v_{\text{net}}) = \mathcal{F}_\theta(s_{n_L})
-
 $$
 
 其中$\mathbf{p} \in \Delta(\mathcal{A}(n_L))$是动作空间上的概率单纯形，$ v_{\text{net}} \in (-1,1)$。设置评估值 $v_{\text{eval}} = v_{\text{net}}$。随后对 $\mathcal{A}(n_L)$ 中**每一个**合法动作 $a$，初始化新边 $e=(n_L, a)$：
 
 $$
 N(e) \leftarrow 0, \quad W(e) \leftarrow 0, \quad Q(e) \leftarrow 0, \quad P(e) \leftarrow \mathbf{p}_a
-
 $$
 
 完成全部子边初始化后，标记$\text{Expanded}(n_L) = \text{True}$。
@@ -88,14 +82,12 @@ N(e_t) &\leftarrow N(e_t) + 1, \\
 W(e_t) &\leftarrow W(e_t) + v_{\text{eval}}, \\
 Q(e_t) &\leftarrow \frac{W(e_t)}{N(e_t)}.
 \end{aligned}
-
 $$
 
 等价地，$Q$也可直接写为迭代形式：
 
 $$
 Q(e_t) \leftarrow Q(e_t) + \frac{v_{\text{eval}} - Q(e_t)}{N(e_t)}
-
 $$
 
 **重要不变量**：对于任意边$e ，$ W(e)$始终等于该边被选中时所有回溯至其上的评估值之和。由于评估值$ v_{\text{eval}}$可能来自网络预测或真实终局奖励，$ Q(e)$是有偏但渐近一致的蒙特卡洛估计量。若$ N(e) \to \infty 且网络预测偏差在训练中趋向于零，则$ Q(e) \to \mathbb{E}[R|s,a]$。
@@ -110,14 +102,12 @@ $$
 
 $$
 Q_{\text{virt}}(n,a) \leftarrow Q(n,a) - \lambda_{\text{virt}}
-
 $$
 
 其中$\lambda_{\text{virt}} > 0$（通常取 $0.5$ 或 $1$）。此时该边在**选择阶段**的评分 $U(n,a)$ 显著降低，迫使其他并行线程转向其他分支。待该线程完成反向传播并提交真实 $v_{\text{eval}}$ 后，立即撤销虚拟损失：
 
 $$
 Q(n,a) \leftarrow Q(n,a) + \lambda_{\text{virt}}, \quad N(n,a) \leftarrow N(n,a) + 1
-
 $$
 
 （顺序上先撤销再更新真实值，或合并更新保证原子性）。
@@ -132,7 +122,6 @@ $$
 
 $$
 \pi_{\text{MCTS}}(a \mid s_{\text{root}}) = \frac{ N(n_0, a)^{1 / \tau} }{ \sum_{b \in \mathcal{A}(n_0)} N(n_0, b)^{1 / \tau} }
-
 $$
 
 其中$\tau > 0$为**温度参数**，其调度严格影响探索-利用权衡：
@@ -150,7 +139,6 @@ $$
 
 $$
 Q^*(s,a) = R(s) + \gamma \sum_{s'} T(s,a,s') \cdot V^*(s'), \quad V^*(s) = \max_a Q^*(s,a)
-
 $$
 
 而 PUCT 的探索项在 $N \to \infty$ 时趋于零（因 $\sqrt{\sum N}/(1+N) \to 0$），因此 $Q(n,a) \to Q^*(s_n,a)$。于是根策略$\pi_{\text{MCTS}}$的支撑集收敛于最优动作集合。这意味着**MCTS算子$\mathcal{G}$是单调的**：对任意价值函数 $V$，$\mathcal{G}(V) \ge V$（逐点意义）。结合GPU的梯度下降逼近最优价值函数，整个AlphaProof系统构成一个广义策略迭代（GPI）框架，在满足充分探索与函数逼近误差有界的条件下，依概率收敛到全局最优证明策略。

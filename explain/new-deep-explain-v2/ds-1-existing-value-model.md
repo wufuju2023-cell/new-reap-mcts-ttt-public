@@ -60,13 +60,11 @@
 $$
 d^*(s) = 1 + \min_a d^*(T(s,a)),\qquad
 V^*(s) = -d^*(s)
-
 $$
 
 $$
 \text{AND 态 } s = (g_1,\dots,g_k):\quad
 V^*(s) = -\max_i d^*(g_i) = \min_i V^*(g_i)
-
 $$
 
 这里的绝对刻度是不可省的：OR 节点取 max、AND 节点取 min，都是对**数值**运算，且 δ=1 的步代价使"深一步 = 值减一"成为精确的递推关系。MCTS 备份 `G(s,a) = −1 + V_φ(s′)` 与 `Q` 的取均值，也都依赖同一刻度。
@@ -77,7 +75,6 @@ Path pair 只提供同一成功路径上的**全序**：V(sₜ) < V(sₜ₊Δ)�
 
 $$
 s_{\mathrm{critic}}(s) = g(-d^*(s)) + \varepsilon(s),\qquad g \text{ 单调（不可微未知）}, \ \varepsilon \text{ 带树间漂移}
-
 $$
 
 由此可推出三条硬结论：
@@ -129,7 +126,6 @@ hidden h ∈ ℝ^d（取最后层/倒数第二层 pooled）
 
 $$
   z_t = -(T-t)
-
 $$
 
 - 训练方式：先只训 (w,b)（可视为线性回归/闭式解），验证 R²、Spearman ρ 可行后再解冻最后 k 层或加 LoRA；
@@ -142,7 +138,6 @@ $$
 
 $$
 L = \lambda_{\mathrm{rank}}\,L_{\mathrm{rank}} + \lambda_{\mathrm{reg}}\,L_{\mathrm{reg}}
-
 $$
 
 - $L_{\text{rank}}$：沿用论文的 path/sibling 偏好对（建议直接用他们公开数据的分割与构造方式）；
@@ -162,7 +157,6 @@ $$
 
 $$
    V(s_{\mathrm{AND}}) = \min_i V(g_i) \quad(\text{即 } -\max_i d(g_i))
-
 $$
 
    不满足：直接整体打分会把"最难的 branch"与"总进度"混为一谈，破坏 1-cpu.md §33 的精确语义；

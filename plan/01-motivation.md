@@ -11,7 +11,6 @@ Reap is a Lean 4 **tactic plugin** that runs tree search over proof states:
 
 $$
 p(a\mid s) = e^{\log p_{\mathrm{LLM}}(a\mid s)}
-
 $$
 
 - The **value** model scores each state (an LLM returning `{"score": float}`).
@@ -45,7 +44,6 @@ Since the original repos omit this loop, we must build it.
 
 $$
 \text{solve-rate} \approx f(\text{model quality}) \circ g(\text{search budget})
-
 $$
 
    AlphaProof reports this superlinearly: doubling search depth buys roughly a

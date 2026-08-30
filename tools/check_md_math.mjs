@@ -74,6 +74,10 @@ for (const f of files) {
       let j = i + 1;
       while (j < lines2.length && lines2[j].trim() !== '$$') j++;
       if (j < lines2.length) end = j; else { err.push(`${f}:${i + 1} BLOCK-PROBLEM ($$ never closed)`); total++; }
+      // GitHub MathJax: a blank line inside the block splits it; flag it.
+      for (let k = i; k <= end; k++) {
+        if (lines2[k].trim() === '') { err.push(`${f}:${k + 1} BLANK-INSIDE (blank line inside $$...$$)`); total++; }
+      }
     } else {
       // inline $$...$$ on one line
       end = i;

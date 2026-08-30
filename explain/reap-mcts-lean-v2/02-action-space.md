@@ -6,7 +6,6 @@
 
 $$
 \mathcal{A}=\{ \mathrm{fillhole},\ \mathrm{patch},\ \mathrm{adddecl},\ \mathrm{effect} \}
-
 $$
 
 每个动作带一个 **Lean 项** $\tau$（或效应签名 $\sigma$）作为其"类型";

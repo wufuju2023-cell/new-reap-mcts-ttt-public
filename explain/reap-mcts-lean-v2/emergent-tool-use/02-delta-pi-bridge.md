@@ -11,7 +11,6 @@
 
 $$
 P \ \text{成立} \iff \mathrm{check}\big(P;\ o_1,\ldots,o_{N_k}\big) = \mathrm{accept}
-
 $$
 
 **Claim 2（Δ→Π 桥）**．若 $P\in\mathcal{F}_k$，则有限实验证据 **可提升为可构造证明**：
@@ -19,7 +18,6 @@ $$
 
 $$
 \mathrm{kernel}\big(\mathrm{script}(O)\big)=\mathrm{ok} \iff \mathrm{check}(P;O)=\mathrm{accept}
-
 $$
 
 **安全类目录**（本 V2 采用的 4 类）：
@@ -41,7 +39,6 @@ $$
 \mathrm{Prove} \to \text{Theorem} & (\text{安全类})\\
 \mathrm{OpenConjecture} + \mathrm{score} & (\text{非安全类})
 \end{cases}
-
 $$
 
 其中 $\mathrm{Refute}(c; m)$：构造性反例搜索器，在 $|O|+1\sim|O|+m$ 穷举/随机搜索
@@ -55,12 +52,10 @@ $$
 $$
 \mathrm{Output}(c) = \big(\ c,\ \mathrm{score}(c; O)\ \big),\qquad
 \mathrm{score}(c;O) := \underbrace{\rho_{\mathrm{feas}}}_{\text{约化覆盖系数}}\cdot\underbrace{\big(1-\hat p_{\mathrm{refute}}\big)}_{\text{反例率估计}}
-
 $$
 
 $$
 \hat p_{\mathrm{refute}} = \frac{\#\{\neg\ c\ \text{在 } |O|+1..|O|+m \}}{m}
-
 $$
 
 > 诚实性原则（与 V2 $\mathcal{I}_{\mathrm{sep}}$ 配套）：自动生成定理仅限 $\mathcal{F}_k$；

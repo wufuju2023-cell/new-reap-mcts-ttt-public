@@ -22,12 +22,10 @@
 
 $$
 \mathrm{V1} := \langle \text{验证器 } \mathrm{Ver}, \text{ 搜索 } \mathrm{MCTS}, \text{ 协议 } \mathrm{Gen}, \text{ RTTT},\ \text{BatchSolver} \rangle
-
 $$
 
 $$
 \mathrm{V2} := \mathrm{V1} \oplus \langle \mathrm{Eff}, \mathrm{MetaState}, \mathrm{MetaActions}, \mathrm{Tower} \rangle
-
 $$
 
 共享面（复用零改动）：`Step.lean`（$\mathrm{Ver}$）、`TreeSearch/*`（$\mathrm{MCTS}$）、`Generator.lean`（$\mathrm{Gen}$）、RTTT 协议、`v1_run.py`/`v1_sink.py`。
@@ -76,7 +74,6 @@ $$s = (\Gamma,\ L,\ H_{\mathrm{obs}}),\qquad H_{\mathrm{obs}} = \{(o_t,\mathrm{m
 
 $$
 \mathcal{A}_{\mathrm{V2}} = \{\mathrm{fill-hole},\ \mathrm{patch-Expr},\ \mathrm{addDecl},\ \mathrm{run-effect}\}
-
 $$
 
 - $\mathrm{fill-hole}(h,\tau)$：在洞 $h$ 处引入项 $\tau$（类型检查通过即合法）；

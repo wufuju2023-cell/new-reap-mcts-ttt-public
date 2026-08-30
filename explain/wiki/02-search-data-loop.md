@@ -33,7 +33,6 @@ Policy + Value (priors + values 引导搜索)
 
 $$
 \text{MCTS} = \underbrace{\text{rollout collection}}_{\text{策略-验证轨迹}} \oplus \underbrace{\hat Q(s,a)\ \text{每步价值}}_{\text{搜索回传给价值头}} \oplus \underbrace{\text{在线更新触发}}_{\text{buffer → ttt\_step}}
-
 $$
 
 即 `v1-spec/00-overview.md` 的数据流：
