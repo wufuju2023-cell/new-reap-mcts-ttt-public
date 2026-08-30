@@ -16,12 +16,14 @@
 
 于是 MCTS 问题形式成为通用程序合成：
 
-$$\begin{aligned}
+$$
+\begin{aligned}
 \text{state } s &= (\text{proof context},\ \mathrm{Env},\ \mathrm{obs}\text{-history})\\
 \text{action } a &\in \mathcal{A}(s) = \{ P : \Gamma\!\vdash\! P\!:\!\mathrm{Eff}\ R,\ \operatorname{len}(P)\le B \}\\
 \text{transition } T(s,a) &= \mathrm{apply}(\Xi, P,\ \mathrm{Env}) = s'\\
 \text{terminal } \mathcal{G}(s) &= \text{"任务达成"谓词（goal closed / tests pass / loss 收敛 / bug 修复）}
-\end{aligned}$$
+\end{aligned}
+$$
 
 $V_\phi(s)$ 估 $\Pr[\mathcal{G}(s)]$，$\pi_\theta$ 生成 $P$ —— 与证明搜索**数学上是一个对象了**：**每个 agent 子任务（修 bug、训小模型、做实验、探数论）都只是一个“目标谓词”，其余完全同构**。
 
@@ -31,7 +33,10 @@ $V_\phi(s)$ 估 $\Pr[\mathcal{G}(s)]$，$\pi_\theta$ 生成 $P$ —— 与证明
 
 类型检查器是**静态动作过滤网**：
 
-$$\mathcal{A}_{\text{type}}(s) \subsetneq \mathcal{A}_{\text{free}}(s),\qquad \Pr[\text{illegal}]=0\ (\text{类型通过})$$
+$$
+\mathcal{A}_{\text{type}}(s) \subsetneq \mathcal{A}_{\text{free}}(s),\qquad \Pr[\text{illegal}]=0\ (\text{类型通过})
+$$
+
 
 不合法程序（未解析、类型不对）在执行前被拒绝；自由文本 JSON agent 的行动空间里“意图可解释但非法”的比例高得多。作用到样本复杂度上：$p_\theta \to p_\theta' = \Pr[\text{合法且有效}]$ 显著增大——对“搜索指数 $\exp(L^{*})$”的直接压缩。
 

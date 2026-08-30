@@ -98,6 +98,7 @@ $$\mathcal{L}_{\mathrm{SFT}} = -\mathbb{E}_{(x,\mathbf{ctx}, a)\sim D_g \oplus D
 $$
 d_{\text{resolved}}(g+1) \ge d_{\text{resolved}}(g), \qquad
 d_{\text{resolved}} := \max\{\mathrm{Diff}:\ \text{proof found}\}
+
 $$
 
 4. **失败样本也有用**：把 $v$ 的失败 trial 与成功记录配对，形成传统 DPO/偏好数据（成功 > 失败）。

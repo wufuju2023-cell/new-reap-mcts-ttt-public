@@ -1,73 +1,74 @@
 # 07 · 模型与价值头
 
-> 模型 = 一个**双头网络**：Policy head（生成有希望的 tactic + prior）与 **Categorical value head**（预测分桶后的剩余 proof-search cost）。
+> 双头网络：**Policy head**（生成 tactic + prior）与 **Categorical value head**（64 档剩余距离 $d\in[1,64]$，搜索效用 $V=-d$）。
 
 回目录：[wiki 首页](README.md) ｜ 上一篇：[Rollout 管线](06-rollout-pipeline.md) ｜ 下一篇：[分布式基础设施](08-distributed-infrastructure.md)
 
 ---
 
-## 1. 标准形态（演示文稿版本）
+## 1. 当前形态：REAL7B full-v3（64 档距离头）
 
-![deck-19](assets/deck-19.png)
+> 依据 `reap-new-update-model` `master` 的 `discussion/new_value_head_in7b_ex1/`（F1 / H1 真实成功案例），**不再是**早期版本的标量 `[-1,1]`+随机初始化。
 
-- **Policy head**：生成候选 tactic，并提供 prior（$\log p_\theta(a|s)$ → token-level logprob，端上和；
-- **Value head**：对"剩余证明长度"做**分桶分类**（categorical）——alpha-proof 的量化口径；与 policy 共享 backbone；
-- **训练口径**：$\mathcal{L}_V = \mathrm{CE}(v_\theta(s), \mathrm{bin}(d(s)))$（见 [04](04-training-objective.md)）。
-
-> 语义澄清：价值网络是对**状态**的估计（"该局面 → 后续最优下最终可证概率/剩余代价"）；对"走法"的派生量是 $Q(s,a) = r + \gamma V_\phi(s')$——两者不要混。详见 `explain/1-价值头的作用.md`（含"价值头 vs 聊天式价值模型"区别：后者不可微、不可在线更新；$V_\phi$ 是**可微回归器**，可在 `/ttt_step` 里持续微调）。
-
-## 2. 本项目实现的标量价值头（`app/VALUE_HEAD.md`）
-
-与 REAL-Prover 共享 backbone 的独立连续 value head；借鉴 nanoproof 训练信号（验证成功的轨迹、剩余深度、MCTS backup return）：
+**核心语义（README 原文）**：
 
 ```
-backbone 最后一个有效 token hidden (H)
-  → Linear(H, 256) → SiLU → Linear(256, 1) → Tanh → V(s) ∈ [-1, 1]
+非终态距离：d ∈ [1,64]        搜索效用：V(s) = -d
+已证明终态：d=0, V=0          Lean 非法动作：丢弃
+形式化确认的死节点：-∞         预算耗尽/未找到证明：unknown（不是 -∞）
 ```
 
-- `H` 从模型配置动态读取（不再硬编码 4096）；backbone BF16，head FP32；
-- 训练目标：验证器产生的 normalized discounted return；或传 `proof_depth`，按 `-min(depth,64)/64` 转换。
+**结构**（冻结 REAL-Prover 7B 表征，只训小头）：
 
-**HTTP 输出两种模式**：
-
-| 模式 | 输出 | 适配 |
-|---|---|---|
-| `scalar`（默认） | `score = -V(s)` | 本项目 `v1-spec/01-policy-value.md` |
-| `distance` | 映射到 `[1, max_distance]` 正距离 | nanoproof / verified-collector 风格（Lean 侧再取负） |
-
-两模式共享同一套 head 参数；模式与 `max_distance` 写入 checkpoint 元数据，恢复时校验。
-
-## 3. 训练方式（离线 / 在线）
-
-**离线**（`train_value_head.py`，冻结 backbone）：JSONL 每行给显式监督字段之一：
-
-```json
-{"prompt":"<Lean state>","value_target":0.35}
-{"state":"<Lean state>","proof_depth":8}
-{"state":"<Lean state>","value_target":-8,"target_kind":"nanoproof"}
-{"states":["s0","s1"],"rewards":[0.0,1.0],"gamma":0.99}
+```
+hidden state (3584)
+  -> Linear(3584, 256) -> SiLU -> Linear(256, 64) -> logits over distance bins 1..64
 ```
 
-脚本**只使用显式监督字段**；不会默认把旧的 `value.score` 当标签（防止用随机 value 预测自举成真值；确要迁移旧数据加 `--allow-score`）。
+- 参数 934,208；离线目标 = 距离档**交叉熵**（unweighted CE，AdamW 1e-3 / wd 0.01 / seed 20260829 / batch 4096 / ≤30 epoch early-stop）；
+- 推理解码：`p = softmax(logits)`，`d = Σ k·p[k]`，`V = -d`（MCTS 只在接口处变号）；
+- 数据：train 205,628 个 LeanTree 状态（80k + 125,628 扩展，来源 manifest 绑定）；val/test 各 8000；sample/state/root/theorem-family 四层 split 隔离；
+- 随机对照：**同结构、同 seed、同训练前初态的精确初态 R64**（不是任意随机头）。
 
-**在线（RTTT 内）**（`policy_server.py` 的 `/ttt_step`）：TD(0)/MC 目标
+## 2. 为什么 64 档 categorical 而不是单标量
 
-$$
-\delta_t = r_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t),\qquad \mathcal{L}_{\mathrm{TD}} = \mathbb{E}[\delta_t^2]
-$$
+1. 保留距离不确定性（softmax 分布可形状化），期望值仍给 MCTS 可解释标量；
+2. 在线小数 target 可投影到相邻两档，形成 **two-hot categorical target**（`distance_two_hot`），不必伪造整数标签；
+3. 代价：64 截断后长距离区分变弱、分布外状态可能过度乐观——必须用真实搜索轨迹 + Lean 结果审计。
 
-**两套参数、两类信号、两种时间尺度**的耦合：策略 LoRA 管"提什么动作"，价值头管"这状态值不值得继续扩"；价值头每收一次真实 Lean 判证回馈就做一次回归修正——把搜索对"好分支"的信任不断向真实验证对齐。
+## 3. 在线（TTT）联合更新
 
-## 4. 配置锚点（v1-spec/01）
+REAL7B 路线的题内 TTT 是 **LoRA + categorical 头 + optimizer 同一步更新**：
 
-- Policy：`FrenzyMath/REAL-Prover`（Qwen2.5-Math-7B 微调，BF16）+ LoRA（r=32, α=64, dropout=0.05）；
-- 推理：FastAPI 走 OpenAI 兼容端点，`n=6, temperature=0.99, max_tokens=1024, logprobs=true`（**必须返回 token-level logprobs**，reap 端求和 = `log π(a|s)`）；
+- 在线 target = 本题真实 MCTS 的有限 `search_visit_backup`（不是失败→-∞）；
+- target 裁剪到 `[1,64]`，小数用 two-hot CE；policy 项 + 对冻结 base policy 的 KL 约束同时存在；
+- 更新必须有真实参数/optimizer 变化 + policy version 递增 + 后续 generation 消费（`online_update_consumed_by_later_generation`）；
+- 已知限制（H1 案例落记）：`selection_value_refresh=false` 时，learn 后旧节点缓存值不重算——新生成/新 value 前向消费新版本，但旧节点回访不归因于更新后头。
+
+**历史形态（早期公开快照）**：标量 `Linear(H,256)→SiLU→Linear(256,1)→Tanh→V(s)∈[-1,1]`，`scalar`/`distance` 两种 HTTP 输出模式（见 [app/VALUE_HEAD.md](../../app/VALUE_HEAD.md)），backbone BF16 + head FP32；该形态已被 full-v3 距离头取代为当前主线。
+
+## 4. 怎么判定“好”与“够好”
+
+- 离线门：NLL / MAE / 根内排序（within-root order）/ 公共 pair——只证明“学到距离结构”，**不能**替代端到端；
+- 相对选择顺序：完整证明数 + 独立 Lean → value 导致的关键合法后继/回访 → 跨题稳定性 → 独占成本；
+- F1 matched pair 证据链：相同 policy/RNG 下 4 个候选，full-v3 访问 `[0,7,0,1]` vs random `[0,4,1,3]` → 回访关键存在状态 → 后续 `simp` 闭合（独立 Lean success），random 臂耗尽；
+- 20 题矩阵未完成前：full-v3 是“最好但未必够好”，不能宣称稳定默认。
+
+## 5. 配置锚点（v1-spec/01，未变部分）
+
+- Policy：`FrenzyMath/REAL-Prover`（Qwen2.5-Math-7B 微调，BF16，REAL7B 冻结特征）+ LoRA；
+- 推理：FastAPI OpenAI 兼容端点，`n=6, temperature=0.99, max_tokens=1024, logprobs=true`（token 级；logP<-30 截断防 PUCT NaN）；
 - 不依赖 vLLM（gfx1100 不在 vLLM ROCm 官方支持矩阵）。
 
 ---
 
-## 溯源
+## 溯源（点击跳转）
 
-- 演示文稿：`reap_tactic.pdf` 第 19 页；
-- 落地说明：`app/VALUE_HEAD.md`（模型结构/两模式/离线训练/启动命令）、`v1-spec/01-policy-value.md`；
-- 原理：`explain/1-价值头的作用.md`（MDP 嵌入、PUCT 中 Q 的作用、围棋胜率同构）、`discussion/alphaproof-value-head/07_AlphaProof从零到完整机制_搜索_Value与TTT.md`。
+> 举例在私有主仓 `reap-new-update-model`（master），公开快照不包含；以下为 GitHub 链接。
+
+- [discussion/new_value_head_in7b_ex1/README.md](https://github.com/wufuju2023-cell/reap-new-update-model/tree/master/discussion/new_value_head_in7b_ex1)（REAL7B 7B 新价值头总入口：设计 / F1 / H1 / 复现）；
+- [01_设计说明/01_Value设计与评价方法.md](https://github.com/wufuju2023-cell/reap-new-update-model/tree/master/discussion/new_value_head_in7b_ex1/01_设计说明)（语义 / 防泄漏 / 结构 / 接入 MCTS / 课程与 TTT / AlphaProof 对应）；
+- [01_设计说明/00_术语表.md](https://github.com/wufuju2023-cell/reap-new-update-model/tree/master/discussion/new_value_head_in7b_ex1/01_设计说明)；
+- [02_成功案例/01_F1匹配随机头因果案例.md](https://github.com/wufuju2023-cell/reap-new-update-model/tree/master/discussion/new_value_head_in7b_ex1/02_成功案例) + [02_成功案例/02_H1平方望远镜课程成功](https://github.com/wufuju2023-cell/reap-new-update-model/tree/master/discussion/new_value_head_in7b_ex1/02_成功案例)；
+- 实现代码：[train_value_head.py](https://github.com/wufuju2023-cell/reap-new-update-model/blob/master/discussion/new_value_head_in7b_ex1/02_成功案例/02_H1%E5%B9%B3%E6%96%B9%E6%9C%9B%E8%BF%9C%E9%95%9C%E8%AF%BE%E7%A8%8B%E6%88%90%E5%8A%9F/code/train_value_head.py)、[categorical_search_backend.py](https://github.com/wufuju2023-cell/reap-new-update-model/blob/master/discussion/new_value_head_in7b_ex1/02_成功案例/02_H1%E5%B9%B3%E6%96%B9%E6%9C%9B%E8%BF%9C%E9%95%9C%E8%AF%BE%E7%A8%8B%E6%88%90%E5%8A%9F/code/categorical_search_backend.py)、[online_ttt.py](https://github.com/wufuju2023-cell/reap-new-update-model/blob/master/discussion/new_value_head_in7b_ex1/02_成功案例/02_H1%E5%B9%B3%E6%96%B9%E6%9C%9B%E8%BF%9C%E9%95%9C%E8%AF%BE%E7%A8%8B%E6%88%90%E5%8A%9F/code/online_ttt.py)；
+- 早期标量版本：[app/VALUE_HEAD.md](../../app/VALUE_HEAD.md)、[v1-spec/01-policy-value.md](../../v1-spec/01-policy-value.md)。

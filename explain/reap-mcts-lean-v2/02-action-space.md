@@ -6,20 +6,25 @@
 
 $$
 \mathcal{A}=\{ \mathrm{fillhole},\ \mathrm{patch},\ \mathrm{adddecl},\ \mathrm{effect} \}
+
 $$
 
 每个动作带一个 **Lean 项** $\tau$（或效应签名 $\sigma$）作为其"类型";
 形式化（syntax 级）：
+
 $$a\in\mathcal{A} \iff \exists \text{ term }\tau: \mathrm{typecheck}(\tau \mid s)= \mathrm{accept}$$
 
 ## 2.2 合法性谓词与零非法率（定理 2.1, part.3 形式化）
 
 定义：
+
 $$\mathrm{legal}(a,s) := \mathbb{1}\{\mathrm{typecheck}_{\mathrm{Lean}}(\tau_a\mid s)=\mathrm{accept}\}$$
 
 **定理（Zero-Illegality）**：若 $\pi_\theta$ 仅对 $\mathcal{A}$（合法集）进行采样，且 $\mathrm{typecheck}$ 为 Lean 的判定决策程序，
 则
+
 $$\mathbb{P}_{a\sim\pi_\theta(s)}[\mathrm{legal}(a,s)] = 1$$
+
 **证明（sketch）**：动作由类型化构造器生成（$\mathrm{fillhole}$ 要求 $\tau:h$ 自底向上检查），
 任何不通过检查的元组被拒绝（$\mathrm{go back}$ 到搜索）；因此生成分布 support 包含于合法集。
 
@@ -30,7 +35,10 @@ $$\mathbb{P}_{a\sim\pi_\theta(s)}[\mathrm{legal}(a,s)] = 1$$
 
 V1：$\mathrm{Goal} :=$ "$\Gamma \vdash Q$"（证明一个命题）。
 V2：$\mathrm{MetaGoal} :=$ "$\mathrm{codeTerm}_{\mathrm{type}}:\mathrm{OutputType}$"（构造一个满足类型 $\mathrm{OutputType}$ 的元级项）。
-$$\mathrm{MetaGoal}\ \supseteq\ \mathrm{Goal}$$（证明本身是 $\mathrm{OutputType}:=\mathrm{Proof}$ 的特例）。
+
+$$\mathrm{MetaGoal}\ \supseteq\ \mathrm{Goal}$$
+
+（证明本身是 $\mathrm{OutputType}:=\mathrm{Proof}$ 的特例）。
 
 **类型即谓词**：$\mathrm{legal}$ 与 $\mathrm{solved}$ 的判定都是**类型检查**——因此 V2 的 MCTS 的目标函数
 （G 的定义域）与 V1 完全同构，只是 $\mathrm{Goal}$ 的对象更大（$\mathrm{LeanTerm}$ 全域）。

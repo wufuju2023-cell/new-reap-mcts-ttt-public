@@ -14,16 +14,21 @@
 ## 1. 形式化：三个不变量 ⇒ 窗口 $O(1)$
 
 **(I1) 每步窗口恒定**：
+
 $$W_{\mathrm{step}} = w_0(\text{当前目标}) + w_1(\text{检索 top-}k) + w_2(\text{上题摘要}) + w_3(\text{短程}) \le W_{\max}$$
+
 其中 $w_1,w_2$ 为常数上限（$k$ 固定、摘要 token 上限固定），与题号 $n$、$\|L_n\|$ **无关**。
 
 **(I2) 跨题“原子化沉淀”，不做整轨搬运**：
+
 $$T_{n-1} \to \mathrm{mem}(T_{n-1}) = \{\text{定理, 关键引理, 未证猜想, 失败模式, 灵感登记}\}$$
+
 证明过的进 $L$（③）；未完成但“有用线索”登记为 hypothesis/insight/revision 型 memo；原始 trace 归档弃置。
 
 **(I3) 树状态 Markov 化**：节点价值只依赖 (goal, local ctx, obs-历史窗 $O(1)$)，树搜索不把全历史带在节点间。
 
 若 (I1)-(I3) 成立：
+
 $$\|H_n\| \to \infty\ (\text{研究史}),\quad \|W_{\mathrm{step}}\| \le W_{\max}\ (\text{每步窗口})$$
 
 ## 2. 剩余本质风险（诚实清单）

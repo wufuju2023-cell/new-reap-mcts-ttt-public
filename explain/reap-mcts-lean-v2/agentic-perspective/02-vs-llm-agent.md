@@ -33,4 +33,5 @@
 ## 2.4 一个可分辨的度量（落地建议）
 
 $$R_{\text{agent}} = \alpha \cdot \underbrace{\mathrm{solve@B}}_{\text{形式}}{\color{gray}+\beta \cdot \mathrm{util}_{\text{tools}}}+\gamma \cdot \mathrm{depth}_{\text{ladder}}$$
+
 按维度上报（§8 的 A/B/C/D），用以判断“我们的 agent 是否真的具备 agentic 技能”而非“只是搜索器”。

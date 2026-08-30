@@ -19,7 +19,9 @@ $$\pi_{t+1} \leftarrow \mathrm{distill}\big(\underbrace{\pi^{\mathrm{search}}}_{
 
 - **数据是“内生的”**：对手即自己，观测与分布**由当前水平自动定义**——self-play 无需外部标签的根源；
 - **搜索增强（policy improvement）**：MCTS 的 visit 分布 $\pi^{\mathrm{search}}$ **严格优于**网络原始 $\pi$（每局 1600 sims ≈ 近似最优），蒸馏 $\pi_t \leftarrow \pi^{\mathrm{search}}$ = **一步策略改进**：
+
 $$\mathcal{L}_\theta = -\epsilon\,\pi^{\mathrm{search}}\ln\pi_\theta + \lambda\|V_\theta(s)-z\|^2 + c\|\theta\|^2$$
+
 - **非平稳性管理**：目标（产生数据的分布）随 $\theta$ 演化——用“最新代数据为主 + 少量 replay”的近端策略采样管理；
 - **无“对手难度调整器”**：难度由自身水平内生（对手=自己），训练曲线 = 策略曲线的联立提升。
 

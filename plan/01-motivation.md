@@ -11,6 +11,7 @@ Reap is a Lean 4 **tactic plugin** that runs tree search over proof states:
 
 $$
 p(a\mid s) = e^{\log p_{\mathrm{LLM}}(a\mid s)}
+
 $$
 
 - The **value** model scores each state (an LLM returning `{"score": float}`).
@@ -36,7 +37,7 @@ Since the original repos omit this loop, we must build it.
 ## 1.3 Why a smaller model
 
 1. **Hardware**: REAL-Prover 7B BF16 needs $\ge 16$ GB VRAM for vLLM; a
-   1.5B--3B model fits on a single budget GPU ($4\text{GB}$--$9\text{GB}$),
+   1.5B--3B model fits on a single budget GPU ($4\text{GB}$--$ 9\text{GB}$),
    and 0.5B--1B can almost run CPU-only for smoke tests.
 2. **The search-scaling tradeoff**: weaker policies can still solve theorems
    given enough search, because each node cost is cheap and the verifier is
@@ -44,6 +45,7 @@ Since the original repos omit this loop, we must build it.
 
 $$
 \text{solve-rate} \approx f(\text{model quality}) \circ g(\text{search budget})
+
 $$
 
    AlphaProof reports this superlinearly: doubling search depth buys roughly a

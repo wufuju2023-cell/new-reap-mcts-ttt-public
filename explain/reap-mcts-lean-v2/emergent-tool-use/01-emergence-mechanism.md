@@ -6,6 +6,7 @@ V2 spec 已给：
 
 $$
 \nabla_\theta \mathcal{R}\cdot\nabla_\theta \pi(\tau) = 0 \quad(\text{除非 } \tau\ \text{链末端抵终局})
+
 $$
 
 因此"工具使用"**不会**因"执行得好"被奖励；任何正向涌现必须经由**状态/塔变化**的间接路径。
@@ -17,12 +18,14 @@ $$
 $$
 \Delta U(\tau) := \mathbb{E}_{\pi}\big[\mathrm{score}(s', L')-\mathrm{score}(s, L) \,\big|\ a=\tau\big]
             \ \propto\ \mathbb{P}\big[c \in \mathcal{F}_k \wedge \mathrm{gate}(c)=\mathrm{ok}\big]
+
 $$
 
 策略梯度项对此的贡献：
 
 $$
 \nabla_\theta J = \mathbb{E}\Big[\sum_{t} \gamma^{T-t} \Delta U(\tau_t)\,\nabla_\theta \log\pi_\theta(\tau_t\mid s_t)\Big]
+
 $$
 
 **推论（涌现的收敛条件）**：
@@ -43,5 +46,7 @@ $$
 
 $$
 \rho(\Delta\tau_g,\ \mathbb{1}[c\ \text{入塔}]) \quad \text{（§5 的 TowerDelta 指标）}
+
 $$
+
 作为"涌现源于塔奖赏而非噪声"的统计证据。

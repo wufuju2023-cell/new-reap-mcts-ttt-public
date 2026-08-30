@@ -26,6 +26,7 @@ AlphaProof（以及我们直接复刻的 Reap）对 AlphaZero 做了三类改造
 - **单玩家、验证终结**：终局= kernel 闭环；深度退回：节点扩展是“确定转移”（Lean 校验），所以*没有*对手的干扰，但**存在 AND/OR 结构**（子目标必须全解）；
 - **AND/OR 与 min-backup**（`Tactic/TreeSearch.lean`）：OR 节点取 max，AND 节点值=未解子目标的 $\min$（必须全部可解才算可解）——这使树的结构**精确表达逻辑必然**；
 - **访问折扣** $\gamma$（`visit_discount`）与 c 递增：把“搜索深度”折算成**求解概率几何**：
+
 $$Q_{\text{disc}} = \gamma^{-(1-c_{\text{depth}})}\ (\text{代入还原的 PUCT} Q)\quad\text{—— 这正是 AlphaProof 的推广}$$
 
 于是 MCTS 的语义更新为：**它把“我能否证明/证反”估计成功传播为“这个中间状态离证明有多远”**——这正是 Lean 稀疏奖励（$\{0,1\}$ 终局）下训练价值/策略的**唯一可靠转导**：$V_\theta(s)$ 的监督信号来自搜索回传 $Q$（不是终局奖励，终局奖励几乎处处为 0）。
@@ -34,7 +35,7 @@ $$Q_{\text{disc}} = \gamma^{-(1-c_{\text{depth}})}\ (\text{代入还原的 PUCT}
 
 V1 中 MCTS 承担三重职能：
 
-$$\underbrace{\text{rollout collection}}_{\text{策略-验证轨迹}}\ \oplus\ \underbrace{\hat Q(s,a)\ \text{每步价值}}_{\text{搜索回传给价值头}}\ \oplus\ \underbrace{\text{在线更新触发}}_{\text{buffer→ttt_step}}$$
+$$\underbrace{\text{rollout collection}}_{\text{策略-验证轨迹}}\ \oplus\ \underbrace{\hat Q(s,a)\ \text{每步价值}}_{\text{搜索回传给价值头}}\ \oplus\ \underbrace{\text{在线更新触发}}_{\text{buffer}\to\text{ttt\_step}}$$
 
 关键：**RTTT 与 MCTS 是在线的同一循环**——值头在搜索进行中就被更新（$V \leftarrow V+\alpha_V(G_t - V)$），然后**搜索继续**，下一节点用**已更新的值**选择。这种“边搜索边学”是只有**树+搜索访问统计**支持的（单轨 rollout 没有“价值回传”事件，无从在线更新）。即：
 
@@ -43,7 +44,9 @@ $$\underbrace{\text{rollout collection}}_{\text{策略-验证轨迹}}\ \oplus\ \
 ## 4. 有哪些其他选择？（系统谱系与理由）
 
 #### 候选 1：Best-first + 值（`BestFirst.lean` 已实现）
+
 $$\text{expand } \arg\max_{s\in\text{fringe}} \boxed{V_\phi(s)}$$
+
 - 优点：单轮简单、与 RTTT 兼容；缺点：**没有在线探索平衡（先验信息）**——价值高估会死锁在“局部不可开”分支；树的重用低效。
 - 定性：是“MCTS 的一种退化”（$\mathrm{select}=\max V$），对新问题可行、对“先验不可靠”时不稳。
 

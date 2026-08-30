@@ -16,11 +16,16 @@ $$\tau_{t+1} \leftarrow \mathrm{evolve}\big(\tau_t;\ \text{fitness} = \text{学�
 设：
 
 - 状态 = 库 $L_t$、难度地形 $D_t$、学生参数 $\theta_t$、教师策略 $\tau_t$（出题分布 $q_\tau(p)$、难度窗口、提示风格/算子权重）；
-- **学生收益**：$$J_s(\theta; \tau) = \mathbb{E}_{p\sim q_\tau}\left[\mathrm{solve@}B(\theta, p)\right]$$
+- **学生收益**：
+
+$$J_s(\theta; \tau) = \mathbb{E}_{p\sim q_\tau}\left[\mathrm{solve@}B(\theta, p)\right]$$
+
 - **教师收益**（关键设计）：教师应最大化“**学习进步（learning progress）**”而非单纯难度：
+
 $$J_t(\tau; \theta) = \mathbb{E}_{p\sim q_\tau}\Big[\underbrace{\Delta\,\mathrm{solve@}B(\theta,p)}_{\text{学生进步}}\Big] - \lambda_d\cdot\big(\mathrm{Diff}(p) \text{ 与可解带偏离}\big)$$
+
   其中 $\mathrm{Diff}(p)\in[0.5,0.9]$ 的“恰好够得着”带是正则项（防出题漂移）；
-- **共进化稳定点**（教师-学生不动点）：$(\theta^\*, \tau^\*)$ 满足：$\theta^\*$ 已是 $\tau^\*$ 分布上的局部最优解法、$\tau^\*$ 已找不到能再提升 $J_t$ 的出题变异——这正是“Level-1 共同演化均衡”。
+- **共进化稳定点**（教师-学生不动点）：$(\theta^\ast, \tau^\ast)$ 满足：$\theta^\ast$ 已是 $\tau^\ast$ 分布上的局部最优解法、$\tau^\ast$ 已找不到能再提升 $J_t$ 的出题变异——这正是“Level-1 共同演化均衡”。
 
 ## 2. AlphaEvolve 的机制映射
 
@@ -64,6 +69,7 @@ AlphaEvolve 的关键教训适用于我们：
 AlphaGo Zero 的 self-play 是**单实体算子的自参照**（策略与自己对弈）；我们的“双实体共进化”是它的**分体化推广**：
 
 $$\text{self-play}:\ \theta \to \big(\text{solve self}\big) \Rightarrow \text{对象内部};$$
+
 $$\text{co-evolution}:\ (\theta,\tau) \to \big(\text{solve } \tau\text{-题 }, \text{ 出 } \theta\text{-可学题}\big) \Rightarrow \text{双实体均衡}.$$
 
 **严格判据**（可测）“到达全自动自提升”：
@@ -71,7 +77,7 @@ $$\text{co-evolution}:\ (\theta,\tau) \to \big(\text{solve } \tau\text{-题 }, \
 1. **LP 指标单调**（学生代间 solve@B 提升持续由教师变异带来）；
 2. **教师多样性保持**（教师池每代的多样性熵不塌缩；否则意味着单策略自锁）；
 3. **$d_g$ 增长**（教师出题确实出让“概念深度”，而非只在“题型”上循环）；
-4. **稳定性**：教师 fitness 冻结学生评估 —— $\mathrm{LP}(G^\*)$ 跨版本学生≥阈值。
+4. **稳定性**：教师 fitness 冻结学生评估 —— $\mathrm{LP}(G^\ast)$ 跨版本学生≥阈值。
 
 ## 6. 结论
 

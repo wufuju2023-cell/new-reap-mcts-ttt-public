@@ -15,19 +15,25 @@ $$\mathrm{EffSpec} := (\sigma_{\mathrm{in}},\ \sigma_{\mathrm{out}},\ \mathrm{pr
 - $\mathrm{Trace}$ = 可追索性记录（调用栈/参数/耗时，供审计与 B 指标）。
 
 **$\mathrm{Eff}$ 单子的语义**：效应执行是纯函数式副作用（$s \mapsto s'$），
+
 $$\mathrm{mono}\{\mathrm{Eff}\} : s \xrightarrow{\tau} s'[H_{\mathrm{obs}}\cup\{o\}] \quad \text{(状态单调扩展)}$$
 
 ## 1.2 工具接地定理（Verifier-Grounded Tool Use）
 
 > **定理（Indirect Supervision only）**。对任意效应 $\tau\in\mathcal{T}$，设事实 $\mathrm{Fact}_\tau$ 可被一个
 > 独立决定程序裁决（如：数值试验可复算），则训练信号 $\nabla_\theta \mathcal{L}$ 中 $\tau$ 的偏导
-> $$\nabla_\theta \mathcal{R}\cdot \nabla_\theta \pi(\tau) = 0 \quad (\text{除非 } \tau \ \text{链末端抵达终局})$$
+>
+
+$$\nabla_\theta \mathcal{R}\cdot \nabla_\theta \pi(\tau) = 0 \quad (\text{除非 } \tau \ \text{链末端抵达终局})$$
+
 > 即：**工具质量只通过其选择如何影响形式搜索的成功率而被改进**——与 8-v2 §1.1 的"间接监督"一致。
 
 ## 1.3 特征化（不进奖励进状态）
 
 对于数值实验输出 $x_{\mathrm{exp}}$，定义嵌入
+
 $$\phi(s):= \mathrm{enc}\big(\Gamma, L, \mathrm{top-}k\ \mathrm{obs}, d(\Gamma)\big) \in \mathbb{R}^{n}$$
+
 价值网络输入含 $\phi$：$V_\phi(s) = \mathrm{MLP}(\phi(s))$。
 因此**工具影响的是 $\mathrm{Existence-of-Solution}$ 估计（可证性状），而非奖励本身**。
 

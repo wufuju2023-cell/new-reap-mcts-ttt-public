@@ -9,11 +9,14 @@ $$L_0 := \emptyset, \qquad L_{t+1} := \begin{cases} L_t \cup \{t\} & \mathrm{gat
 其中 $\mathrm{gate}(t) \equiv \mathrm{checkProof}_{\mathrm{Lean}}(t)= \mathrm{ok}$（**kernel 级验证，非文本级**）。
 
 定义 **抽象深度**：
+
 $$\delta(t,L) := \#\{d\in L : d\ \text{出现在 }\mathrm{proof}(t)\}$$
 
 **命题（Tower=Growth）**。若 $t_{k}\in L$（此前被验证入库），则对于后续以 $t_k$ 为引理的证明 $\hat t$，
 $\delta(\hat t, L) \ge \delta(t_k,L)+1$（严格递增）；于是"语言塔"的高度
+
 $$\tau_g := \max_{t\in L_g}\delta(t, L_g)$$
+
 是单调不减序列——与 8-v2 §3 指标 C（技能涌现度量）同形。
 
 ## 3.2 难度–驱动的课程（教师经 V2 动作生成）
@@ -23,7 +26,10 @@ $$\tau_g := \max_{t\in L_g}\delta(t, L_g)$$
 $$\mathcal{M}_{g+1} := \left\{v : \mathrm{Diff}_g(v)\in[0.5,0.9] \ \wedge\ \mathrm{Sim}(v, p_\ast)\ge .7\right\}$$
 
 其中 $\mathrm{Diff}_g(v)=1-\mathrm{solve@}B_{\mathrm{low}}(\pi_g,v)$，$\mathrm{Sim}$ 为 AST 子串相似度。**课程**是
-$$\text{"工具需求密度随 } d_g\text{ 单调上升"}\quad(\text{8-v2 §1.2})$$ 的机器内实现：$\mathrm{effect}$ 被需要 ⟺ 单靠 $\pi_{\theta}$ 的
+
+$$\text{"工具需求密度随 } d_g\text{ 单调上升"}\quad(\text{8-v2 §1.2})$$
+
+的机器内实现：$\mathrm{effect}$ 被需要 ⟺ 单靠 $\pi_{\theta}$ 的
 形式能力无法在 $B$ 内到达终局。
 
 ## 3.3 验证门的旁路防护（Tower 的防穿）

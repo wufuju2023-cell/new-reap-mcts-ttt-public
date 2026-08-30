@@ -2,11 +2,14 @@
 
 ## 4.1 目标函数（ref. 8-v2 §2.0）
 
-$$\mathcal{L}_{\theta,\phi} =
+$$
+\mathcal{L}_{\theta,\phi} =
 \underbrace{\mathcal{L}_{\mathrm{RL}}\big(\mathcal{R}_{\mathrm{V2}}\big)}_{\text{策略：自然终局}}
-+ \lambda_v\ \underbrace{\mathcal{L}_{V}\big(\mathrm{provability-estimate};\ \phi(s)\big)}_{\text{价值：含工具特征}}$$
++ \lambda_v\ \underbrace{\mathcal{L}_{V}\big(\mathrm{provability-estimate};\ \phi(s)\big)}_{\text{价值：含工具特征}}
+$$
 
 其中
+
 $$\mathcal{R}_{\mathrm{V2}}(s,a) := \mathbb{1}\{\mathrm{kernel}(s,a)=\mathrm{ok}\} \lor \mathbb{1}\{\mathrm{refutationVerified}(s,a)\}$$
 
 工具梯度：仅经 $V$(价值) 与策略链（$a$ 链的选择）间接回传（定理 1.2）。

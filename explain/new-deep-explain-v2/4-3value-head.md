@@ -2,12 +2,14 @@ Yes. If you already have a trained LLM policy
 
 $$
 \pi_\theta(a\mid s)
+
 $$
 
 and the CPU side provides
 
 $$
 \text{MCTS}+\text{Lean},
+
 $$
 
 then the cleanest way to train the value head is to treat **Lean-verified proof trajectories and MCTS outcomes as supervision for a scalar critic**.
@@ -24,6 +26,7 @@ $$
 s_0\xrightarrow{a_0}s_1
 \xrightarrow{a_1}\cdots
 \xrightarrow{a_{T-1}}s_T,
+
 $$
 
 where \(s_T\) is a proved state.
@@ -32,12 +35,14 @@ If your reward is
 
 $$
 r_t=-1
+
 $$
 
 for every successful proof step, and
 
 $$
 r_T=0,
+
 $$
 
 then the return from \(s_t\) is
@@ -48,6 +53,7 @@ G_t
 \sum_{k=t}^{T-1}-1
 =
 -(T-t).
+
 $$
 
 Therefore the simplest value target is
@@ -56,6 +62,7 @@ $$
 \boxed{
 z_t=-(T-t)
 }
+
 $$
 
 and the value network should learn
@@ -64,6 +71,7 @@ $$
 \boxed{
 V_\phi(s_t)\approx -(T-t).
 }
+
 $$
 
 Here \(V_\phi\) is just your LLM plus a scalar head.
@@ -76,6 +84,7 @@ Suppose your policy LLM is
 
 $$
 h=f_\theta(s)
+
 $$
 
 where \(h\in\mathbb R^d\) is the hidden representation of the Lean proof state.
@@ -86,6 +95,7 @@ $$
 V_\phi(s)
 =
 w_v^\top h+b_v.
+
 $$
 
 So the network is
@@ -114,6 +124,7 @@ The value head has only
 
 $$
 d+1
+
 $$
 
 parameters.
@@ -132,6 +143,7 @@ For each proof:
 
 $$
 s_0,\ldots,s_T,
+
 $$
 
 construct:
@@ -140,6 +152,7 @@ $$
 \mathcal D_V
 =
 \{(s_t,-(T-t))\}_{t=0}^{T}.
+
 $$
 
 For example:
@@ -167,6 +180,7 @@ L_V(\phi)
 V_\phi(s_i)-z_i
 \right)^2
 }
+
 $$
 
 with respect to the value head.
@@ -175,12 +189,14 @@ Initially, I would **freeze the LLM**:
 
 $$
 \theta=\text{constant}
+
 $$
 
 and train only
 
 $$
 \phi=(w_v,b_v).
+
 $$
 
 This gives you an extremely cheap value initialization.
@@ -197,6 +213,7 @@ Then your dataset contains:
 
 $$
 500
+
 $$
 
 states from one theorem.
@@ -207,12 +224,14 @@ You can instead sample states approximately uniformly over theorems:
 
 $$
 P(\text{theorem})=\frac1N
+
 $$
 
 and then sample:
 
 $$
 t\sim\operatorname{Uniform}(0,T).
+
 $$
 
 This prevents long proofs from dominating training.
@@ -233,24 +252,28 @@ $$
 \rightarrow
 \text{proof trajectory}
 }
+
 $$
 
 Whenever MCTS finds:
 
 $$
 s_t\rightarrow\cdots\rightarrow s_T,
+
 $$
 
 you get:
 
 $$
 z_t=-(T-t).
+
 $$
 
 Add
 
 $$
 (s_t,z_t)
+
 $$
 
 to your replay buffer.
@@ -261,6 +284,7 @@ $$
 \boxed{
 \text{MCTS is simultaneously a search algorithm and a data generator}.
 }
+
 $$
 
 This is the key transition from supervised initialization to self-improvement.
@@ -275,6 +299,7 @@ Suppose the root is:
 
 $$
 s_0.
+
 $$
 
 MCTS explores:
@@ -286,6 +311,7 @@ s_1
 \rightarrow
 s_2
 \rightarrow\cdots
+
 $$
 
 and eventually obtains a collection of successful and unsuccessful trajectories.
@@ -294,6 +320,7 @@ For every visited state \(s\), MCTS can estimate:
 
 $$
 \hat V_{\mathrm{MCTS}}(s).
+
 $$
 
 Then train the neural value function toward that estimate:
@@ -306,6 +333,7 @@ L_V
 V_\phi(s)-\hat V_{\mathrm{MCTS}}(s)
 \right)^2.
 }
+
 $$
 
 This is essentially **value distillation from search**.
@@ -322,6 +350,7 @@ For each simulation \(i\), let its terminal return be
 
 $$
 G_i.
+
 $$
 
 Then a simple estimate is
@@ -333,12 +362,14 @@ $$
 \frac1{N(s)}
 \sum_{i=1}^{N(s)}G_i.
 }
+
 $$
 
 If successful trajectories have reward
 
 $$
 -\text{proof length},
+
 $$
 
 then this estimates expected proof cost under the searched policy.
@@ -363,6 +394,7 @@ Suppose MCTS reaches:
 
 $$
 s_L
+
 $$
 
 and Lean confirms success after \(k\) remaining steps.
@@ -371,6 +403,7 @@ Then this is a very high-quality target:
 
 $$
 z=-k.
+
 $$
 
 Call this a **verified target**.
@@ -379,6 +412,7 @@ By contrast, if MCTS stops at a leaf because the search budget is exhausted and 
 
 $$
 V_\phi(s_L),
+
 $$
 
 then this is only a bootstrap target.
@@ -387,12 +421,14 @@ So I would maintain:
 
 $$
 \mathcal D_{\mathrm{verified}}
+
 $$
 
 and
 
 $$
 \mathcal D_{\mathrm{bootstrap}}.
+
 $$
 
 And weight them differently:
@@ -403,6 +439,7 @@ L_V
 \lambda_{\mathrm{verified}}L_{\mathrm{verified}}
 +
 \lambda_{\mathrm{bootstrap}}L_{\mathrm{bootstrap}},
+
 $$
 
 with
@@ -411,6 +448,7 @@ $$
 \lambda_{\mathrm{verified}}
 >
 \lambda_{\mathrm{bootstrap}}.
+
 $$
 
 ---
@@ -423,6 +461,7 @@ Instead of
 
 $$
 V(s)=-\text{remaining steps},
+
 $$
 
 define
@@ -433,12 +472,14 @@ V_{\mathrm{succ}}(s)
 =
 P(\text{Lean proof eventually succeeds}\mid s).
 }
+
 $$
 
 Then:
 
 $$
 V_{\mathrm{succ}}(s)\in[0,1].
+
 $$
 
 Your target is simply:
@@ -449,6 +490,7 @@ z=
 1 & \text{if proof succeeds},\\
 0 & \text{if search terminates unsuccessfully}.
 \end{cases}
+
 $$
 
 and you use BCE:
@@ -458,6 +500,7 @@ L_V
 =
 -z\log V_\phi(s)
 -(1-z)\log(1-V_\phi(s)).
+
 $$
 
 This is often easier to stabilize.
@@ -470,6 +513,7 @@ Suppose MCTS fails to prove
 
 $$
 P
+
 $$
 
 within 10,000 simulations.
@@ -478,12 +522,14 @@ That does **not** mean:
 
 $$
 P(\text{proof exists}\mid s)=0.
+
 $$
 
 It only means:
 
 $$
 \text{MCTS}_{B}(s)
+
 $$
 
 did not find a proof under budget \(B\).
@@ -494,6 +540,7 @@ $$
 \boxed{
 \text{search failure}\neq\text{theorem impossibility}.
 }
+
 $$
 
 This is extremely important.
@@ -502,6 +549,7 @@ You should not automatically assign
 
 $$
 V(s)=0
+
 $$
 
 to every state where search failed.
@@ -518,6 +566,7 @@ For a first serious implementation, I would use **two heads**:
 
 $$
 V_L(s)
+
 $$
 
 = expected remaining proof length conditional on success,
@@ -526,6 +575,7 @@ and
 
 $$
 V_S(s)
+
 $$
 
 = probability of eventual success.
@@ -539,6 +589,7 @@ V(s)=
 V_S(s),V_L(s)
 \right).
 }
+
 $$
 
 Training:
@@ -549,12 +600,14 @@ L
 \lambda_S L_S
 +
 \lambda_L L_L.
+
 $$
 
 Where:
 
 $$
 L_S=\operatorname{BCE}(V_S,y)
+
 $$
 
 and
@@ -562,18 +615,21 @@ and
 $$
 L_L=
 \operatorname{Huber}(V_L,-d).
+
 $$
 
 Then MCTS knows both:
 
 $$
 \text{“How likely am I to succeed?”}
+
 $$
 
 and
 
 $$
 \text{“If I succeed, how far away am I?”}
+
 $$
 
 ---
@@ -586,6 +642,7 @@ For every root state \(s\), MCTS produces:
 
 $$
 N(s,a)
+
 $$
 
 for each action.
@@ -599,12 +656,14 @@ $$
 \frac{N(s,a)^{1/\tau}}
 {\sum_b N(s,b)^{1/\tau}}.
 }
+
 $$
 
 Then train your LLM policy toward:
 
 $$
 \pi_{\mathrm{MCTS}}.
+
 $$
 
 The policy loss is:
@@ -615,6 +674,7 @@ L_\pi
 -\sum_a
 \pi_{\mathrm{MCTS}}(a\mid s)
 \log\pi_\theta(a\mid s).
+
 $$
 
 At the same time:
@@ -623,6 +683,7 @@ $$
 L_V
 =
 (V_\phi(s)-z)^2.
+
 $$
 
 Therefore:
@@ -635,6 +696,7 @@ L
 +
 \lambda_V L_V.
 }
+
 $$
 
 Now your complete learning loop is:
@@ -683,12 +745,14 @@ You want:
 
 $$
 \pi_\theta(a\mid s)
+
 $$
 
 to represent **action quality locally**, while
 
 $$
 V_\phi(s)
+
 $$
 
 represents **long-horizon downstream outcome**.
@@ -699,12 +763,14 @@ $$
 s
 \rightarrow
 a_1
+
 $$
 
 may have:
 
 $$
 \pi(a_1|s)=0.8
+
 $$
 
 but lead to a dead end after 20 steps.
@@ -713,12 +779,14 @@ Another action:
 
 $$
 a_2
+
 $$
 
 may have:
 
 $$
 \pi(a_2|s)=0.05
+
 $$
 
 but lead immediately to a proof.
@@ -733,6 +801,7 @@ Suppose MCTS reaches a leaf:
 
 $$
 s_L.
+
 $$
 
 Instead of continuing to Lean indefinitely, it asks GPU:
@@ -741,12 +810,14 @@ $$
 (\pi_\theta,V_\phi)
 =
 f_\theta(s_L).
+
 $$
 
 Then:
 
 $$
 V_\phi(s_L)
+
 $$
 
 is backed up through the tree.
@@ -761,6 +832,7 @@ N(s,a)Q(s,a)+V_\phi(s')
 }{
 N(s,a)+1
 }.
+
 $$
 
 The exact backup depends on your reward convention.
@@ -773,6 +845,7 @@ G(s,a)
 =
 -1+V(s')
 }
+
 $$
 
 so:
@@ -782,6 +855,7 @@ Q(s,a)
 \leftarrow
 \text{running average of }
 [-1+V(s')].
+
 $$
 
 Thus the value network directly determines MCTS's exploration preference.
@@ -800,6 +874,7 @@ V
 \text{training data}
 \rightarrow
 V.
+
 $$
 
 This is not a bug.
@@ -814,6 +889,7 @@ $$
 \boxed{
 \text{Mathlib supervised value training}
 }
+
 $$
 
 is extremely useful before:
@@ -822,6 +898,7 @@ $$
 \boxed{
 \text{MCTS self-training}.
 }
+
 $$
 
 ---
@@ -835,12 +912,14 @@ $$
 \{
 (s,\pi_{\mathrm{search}},z)
 \}.
+
 $$
 
 Every MCTS run contributes:
 
 $$
 (s,\pi_{\mathrm{MCTS}},z).
+
 $$
 
 For example:
@@ -878,6 +957,7 @@ $$
 \rightarrow
 \text{GPU training}
 }
+
 $$
 
 ---
@@ -890,6 +970,7 @@ Your replay buffer can contain three classes:
 
 $$
 s\rightarrow\text{Lean proof}
+
 $$
 
 Highest-quality value labels.
@@ -908,6 +989,7 @@ Therefore I would use:
 
 $$
 w_A>w_B>w_C.
+
 $$
 
 ---
@@ -922,12 +1004,14 @@ Freeze:
 
 $$
 \theta
+
 $$
 
 and train only:
 
 $$
 \phi.
+
 $$
 
 ### Phase 2
@@ -936,6 +1020,7 @@ Continue freezing most of the LLM and train:
 
 $$
 \phi
+
 $$
 
 using MCTS data.
@@ -946,12 +1031,14 @@ Unfreeze LoRA/adapters:
 
 $$
 \theta_{\mathrm{LoRA}}
+
 $$
 
 and jointly train:
 
 $$
 L_\pi+\lambda L_V.
+
 $$
 
 ### Phase 4
@@ -960,6 +1047,7 @@ Only if necessary:
 
 $$
 \text{full LLM fine-tuning}.
+
 $$
 
 This is much safer than immediately modifying the entire pretrained policy.
@@ -972,6 +1060,7 @@ If the backbone is frozen:
 
 $$
 h_i=f_\theta(s_i)
+
 $$
 
 can be precomputed.
@@ -980,12 +1069,14 @@ Store:
 
 $$
 h_i\in\mathbb R^d.
+
 $$
 
 Then value training becomes:
 
 $$
 V(s_i)=w^\top h_i+b.
+
 $$
 
 You can train this using ordinary regression on CPU/GPU without repeatedly running the LLM.
@@ -1000,6 +1091,7 @@ $$
 \rightarrow
 \text{linear regression}.
 }
+
 $$
 
 This is an excellent sanity check.
@@ -1012,18 +1104,21 @@ Before building complicated RL, measure:
 
 $$
 R^2
+
 $$
 
 between:
 
 $$
 V_\phi(s)
+
 $$
 
 and:
 
 $$
 -(T-t).
+
 $$
 
 Also measure Spearman correlation:
@@ -1034,12 +1129,14 @@ $$
 V_\phi(s),
 -(T-t)
 \right).
+
 $$
 
 If you get something like:
 
 $$
 \rho\approx0.8,
+
 $$
 
 then your pretrained LLM representation already contains substantial information about proof distance.
@@ -1048,6 +1145,7 @@ If:
 
 $$
 \rho\approx0,
+
 $$
 
 then adding a sophisticated MCTS training loop probably won't magically fix the representation.
@@ -1084,12 +1182,14 @@ V(s)=V(
 \text{current goal}
 )
 }
+
 $$
 
 not:
 
 $$
 V(\text{theorem statement}).
+
 $$
 
 Two states from the same theorem can have radically different values.
@@ -1105,12 +1205,14 @@ Suppose the dataset contains:
 $$
 s\rightarrow
 \text{proof of length }100.
+
 $$
 
 You assign:
 
 $$
 V(s)=-100.
+
 $$
 
 But MCTS later discovers:
@@ -1118,6 +1220,7 @@ But MCTS later discovers:
 $$
 s\rightarrow
 \text{proof of length }20.
+
 $$
 
 The old label is now wrong relative to the optimal value.
@@ -1126,12 +1229,14 @@ So the true target should evolve:
 
 $$
 z^{(0)}=-100
+
 $$
 
 then:
 
 $$
 z^{(1)}=-20.
+
 $$
 
 Therefore your replay buffer should allow **better proofs to replace worse labels**.
@@ -1142,6 +1247,7 @@ $$
 \boxed{
 \text{proof improvement}
 }
+
 $$
 
 rather than merely proof discovery.
@@ -1156,6 +1262,7 @@ For theorem \(P\):
 
 $$
 V_0(s)
+
 $$
 
 comes from supervised proof data.
@@ -1164,12 +1271,14 @@ comes from supervised proof data.
 
 $$
 \operatorname{MCTS}(P;\pi_0,V_0)
+
 $$
 
 finds:
 
 $$
 p_0.
+
 $$
 
 ### Train
@@ -1178,6 +1287,7 @@ Use \(p_0\) to obtain:
 
 $$
 D_0.
+
 $$
 
 Update:
@@ -1186,24 +1296,28 @@ $$
 V_1
 =
 \operatorname{Train}(V_0,D_0).
+
 $$
 
 ### Search again
 
 $$
 \operatorname{MCTS}(P;\pi_1,V_1)
+
 $$
 
 may find:
 
 $$
 p_1
+
 $$
 
 with:
 
 $$
 |p_1|<|p_0|.
+
 $$
 
 Then:
@@ -1212,6 +1326,7 @@ $$
 V_2
 =
 \operatorname{Train}(V_1,D_1).
+
 $$
 
 Thus:
@@ -1226,6 +1341,7 @@ $$
 \rightarrow
 \text{even better proof}
 }
+
 $$
 
 ---
@@ -1236,6 +1352,7 @@ At test time, given an unseen theorem:
 
 $$
 P^*,
+
 $$
 
 you can perform:
@@ -1254,6 +1371,7 @@ D_0
 D_1
 \rightarrow
 \Theta_2.
+
 $$
 
 But I would **not update the entire LLM** during TTT.
@@ -1264,6 +1382,7 @@ $$
 \boxed{
 \theta_{\mathrm{backbone}}\text{ frozen}
 }
+
 $$
 
 and update only:
@@ -1272,6 +1391,7 @@ $$
 \boxed{
 \phi_V
 }
+
 $$
 
 initially.
@@ -1284,6 +1404,7 @@ V_{\phi_0}
 V_{\phi_1}
 \rightarrow
 V_{\phi_2}.
+
 $$
 
 Then test whether MCTS improves.
@@ -1292,6 +1413,7 @@ Only afterward should you try:
 
 $$
 \text{LoRA policy TTT}.
+
 $$
 
 ---
@@ -1308,6 +1430,7 @@ Take your trained LLM:
 
 $$
 \pi_\theta.
+
 $$
 
 Freeze it.
@@ -1320,6 +1443,7 @@ Generate:
 
 $$
 (s_t,-(T-t)).
+
 $$
 
 ### Step 3
@@ -1328,6 +1452,7 @@ Attach:
 
 $$
 V_\phi(s)=w^\top h_s+b.
+
 $$
 
 Train with:
@@ -1336,6 +1461,7 @@ $$
 \boxed{
 L_V=\operatorname{Huber}(V_\phi(s),-(T-t)).
 }
+
 $$
 
 ### Step 4
@@ -1348,6 +1474,7 @@ $$
 \boxed{
 \text{LLM policy + trained value + Lean + MCTS}
 }
+
 $$
 
 should be your first complete system.
@@ -1360,6 +1487,7 @@ Collect:
 
 $$
 (s,\pi_{\mathrm{MCTS}},z).
+
 $$
 
 ### Step 6
@@ -1377,6 +1505,7 @@ L_{\mathrm{policy}}
 +
 \lambda_VL_{\mathrm{value}}.
 }
+
 $$
 
 ---
@@ -1418,6 +1547,7 @@ L
 \lambda_VL_V.
 \end{aligned}
 }
+
 $$
 
 with the initial value target:
@@ -1426,6 +1556,7 @@ $$
 \boxed{
 z_{\mathcal T}=-(T-t)
 }
+
 $$
 
 coming from **Lean-verified successful proof trajectories**.
@@ -1438,6 +1569,7 @@ $$
 \boxed{
 \text{Don't try to "invent" value labels. Lean + successful trajectories already give you them.}
 }
+
 $$
 
 MCTS then progressively replaces those relatively weak/human-proof-derived labels with **search-derived, increasingly strong labels**.

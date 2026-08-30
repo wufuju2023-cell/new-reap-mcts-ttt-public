@@ -28,9 +28,10 @@ P@k = \frac{\#\{c\in \mathrm{top-}k:\ \mathrm{gate}=\mathrm{ok}\}}{k},\quad
 \mathrm{RefuteRecall} = \frac{\#\{\text{被反例击中的劣质候选}\}}{\#\text{全部劣质候选}},
 \quad
 \lambda = \frac{\#\mathrm{gate}=\mathrm{ok}}{\#\mathrm{Survivors}}
+
 $$
 
-验收：合成集 $P@k\ge0.3$、$\mathrm{RefuteRecall}\ge0.5$、$\lambda$ 随代际不降、TowerDelta>0。
+验收：合成集 $P@k\ge0.3 、$\mathrm{RefuteRecall}\ge0.5 、$\lambda$ 随代际不降、TowerDelta>0。
 
 ## 2.4 双档冒烟断言（smoke_joint）
 

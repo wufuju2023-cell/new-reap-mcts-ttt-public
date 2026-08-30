@@ -61,6 +61,7 @@ GPU — great for verifying the harness before spending money.
 
 $$
 V_\phi(s) = W_2 \cdot \mathrm{act}(W_1 \cdot h(s))
+
 $$
 
   serving `{"score": -V_phi}` through the same chat JSON wrapper, or a second

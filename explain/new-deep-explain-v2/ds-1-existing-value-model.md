@@ -60,11 +60,13 @@
 $$
 d^*(s) = 1 + \min_a d^*(T(s,a)),\qquad
 V^*(s) = -d^*(s)
+
 $$
 
 $$
 \text{AND 态 } s = (g_1,\dots,g_k):\quad
 V^*(s) = -\max_i d^*(g_i) = \min_i V^*(g_i)
+
 $$
 
 这里的绝对刻度是不可省的：OR 节点取 max、AND 节点取 min，都是对**数值**运算，且 δ=1 的步代价使"深一步 = 值减一"成为精确的递推关系。MCTS 备份 `G(s,a) = −1 + V_φ(s′)` 与 `Q` 的取均值，也都依赖同一刻度。
@@ -75,6 +77,7 @@ Path pair 只提供同一成功路径上的**全序**：V(sₜ) < V(sₜ₊Δ)�
 
 $$
 s_{\mathrm{critic}}(s) = g(-d^*(s)) + \varepsilon(s),\qquad g \text{ 单调（不可微未知）}, \ \varepsilon \text{ 带树间漂移}
+
 $$
 
 由此可推出三条硬结论：
@@ -123,9 +126,12 @@ hidden h ∈ ℝ^d（取最后层/倒数第二层 pooled）
 ```
 
 - 数据标签：**成功且 Lean 已验证的轨迹**（Mathlib human proofs + 我们 MCTS 产生的全部验证轨迹）：
-  $$
+
+$$
   z_t = -(T-t)
-  $$
+
+$$
+
 - 训练方式：先只训 (w,b)（可视为线性回归/闭式解），验证 R²、Spearman ρ 可行后再解冻最后 k 层或加 LoRA；
 - 这一改造让 V 同时获得：**绝对刻度 + 与 policy 解耦**；
 - **先测表示质量再投入**（对应 4-3value-head.md §20）：若冻结 1.8B 特征上回归 ρ ≤ 0.2，则说明该基底对"剩余步数"无表示能力，直接放弃高成本微调。
@@ -136,10 +142,11 @@ hidden h ∈ ℝ^d（取最后层/倒数第二层 pooled）
 
 $$
 L = \lambda_{\mathrm{rank}}\,L_{\mathrm{rank}} + \lambda_{\mathrm{reg}}\,L_{\mathrm{reg}}
+
 $$
 
 - $L_{\text{rank}}$：沿用论文的 path/sibling 偏好对（建议直接用他们公开数据的分割与构造方式）；
-- $L_{\text{reg}}$：Huber$(V(s), -d)$，d 来自验证轨迹；
+- $L_{\text{reg}}$：Huber $(V(s), -d)$，d 来自验证轨迹；
 - 建议 $\lambda_{\text{reg}} \gtrsim \lambda_{\text{rank}}$，**先回归后排序**：分类器能凑出 78% 对正确率的两分性，但回归才能给出步数刻度；
 - 若只做"改造一"（纯回归头冻结解码），则 rank 项由冻结 backbone 已有的偏好表示隐式承担，不需要重训。
 
@@ -152,9 +159,12 @@ $$
 ### 改造四：AND 态与 V2 元状态
 
 1. **多 goal**：把 AND 态拆成 k 个单 goal prompt，分别打分：
-   $$
+
+$$
    V(s_{\mathrm{AND}}) = \min_i V(g_i) \quad(\text{即 } -\max_i d(g_i))
-   $$
+
+$$
+
    不满足：直接整体打分会把"最难的 branch"与"总进度"混为一谈，破坏 1-cpu.md §33 的精确语义；
 2. **V2 工具观测 H_obs**：critic 的 1.8B 基底看不到 effect 观测。两条路线：
    - (a) 保守路线：value 只消费纯 Lean state（与 V1 一致），工具信息留给 policy（4-training-and-metrics 的"经策略链间接回传"仍成立）；

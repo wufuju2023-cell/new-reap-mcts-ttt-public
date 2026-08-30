@@ -17,12 +17,14 @@
 
 $$
 \mathcal{L}_\pi(\theta) = -\!\sum_{j=1}^{|a^\star|} \log p_\theta\!\left(a^\star_j \mid s, a^\star_{<j}\right)
+
 $$
 
 （对成功 tactic 做 token NLL——把 search improvement 蒸馏回 policy）
 
 $$
 \mathcal{L}_V(\theta) = \mathrm{CE}\big(v_\theta(s),\ \mathrm{bin}(d(s))\big)
+
 $$
 
 （categorical value head：把 `remaining cost` 分桶后被监督）
@@ -31,6 +33,7 @@ $$
 
 $$
 \mathcal{L}(\theta) = \lambda_\pi \mathcal{L}_\pi(\theta) + \lambda_V \mathcal{L}_V(\theta)
+
 $$
 
 ![deck-12](assets/deck-12.png)
@@ -65,6 +68,7 @@ RL    ~25K statements（MCTS replay + mathlib rehearsal）          → 改进�
 
 $$
 R = \begin{cases} 1 & \exists\ \text{kernel-verified proof script} \\ -\lambda_{\mathrm{exh}} & \text{budget exhausted} \\ \text{failure shaping} & \text{失败模式分开处理} \end{cases}
+
 $$
 
 ---

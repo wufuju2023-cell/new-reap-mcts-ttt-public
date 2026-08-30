@@ -59,6 +59,7 @@ MCTS在由Lean状态节点构成的树上迭代执行以下四阶段，维护每
 
 $$
 \mathcal{L}(\theta) = \mathbb{E}_{(s, \boldsymbol{\pi}, z) \sim \mathcal{D}} \left[ \underbrace{-\boldsymbol{\pi}^\top \log \mathbf{p}_\theta(s)}_{\text{策略损失}} + \underbrace{\lambda_v \cdot (z - v_\theta(s))^2}_{\text{价值损失}} \right] + \lambda_{\text{reg}} \|\theta\|_2^2
+
 $$
 
 其中 $\lambda_v$ 为价值系数（通常取1）。
@@ -68,6 +69,7 @@ $$
 
 $$
 \theta \leftarrow \theta - \eta \cdot \nabla_\theta \left( \frac{1}{|\mathcal{B}|} \sum_{i \in \mathcal{B}} \left[ -\boldsymbol{\pi}_i^\top \log \mathbf{p}_\theta(s_i) + \lambda_v (z_i - v_\theta(s_i))^2 \right] + \lambda_{\text{reg}} \|\theta\|_2^2 \right)
+
 $$
 
 - **策略梯度**：$-\nabla_\theta \boldsymbol{\pi}^\top \log \mathbf{p}_\theta$ 实质上是最大化MCTS改进策略的对数似然，使得网络策略向“强于原始网络”的搜索策略靠拢。

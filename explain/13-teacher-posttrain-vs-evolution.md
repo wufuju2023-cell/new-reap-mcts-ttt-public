@@ -7,8 +7,11 @@
 设教师为 $\tau$，学生为 $\theta$，经验集 $D_t = \{\text{学生 rollout}\}\cup\{\text{入库定理/引理}\}\cup\{\text{失败模式摘要}\}$。
 
 - **教师进化（上一方案，记为 A）**：$\tau$ 是配置向量（prompt/规则/算子权重），更新在**推理层壳**里发生：
+
 $$\tau_{t+1} = \mathrm{evolve}\big(\tau_t;\ \mathrm{fitness}(\theta_t;\ \tau_t)\big),\qquad \text{频率：每 10–50 题}$$
+
 - **教师后训练（旧想法，记为 B）**：$\tau$ 是**模型权重**，更新在**参数空间**里发生：
+
 $$\tau_{t+1} = \mathrm{PostTrain}\big(\tau_t;\ D_t\big),\qquad \text{频率：每 } G\gg 1\ \text{学生代}$$
 
 ## 1. 维度对比（严格）
@@ -35,7 +38,9 @@ $$\tau_{t+1} = \mathrm{PostTrain}\big(\tau_t;\ D_t\big),\qquad \text{频率：�
 - **B 的本义**：教师从学生的**合法经验**里**蒸馏教学能力**——它实质上是一种 **transductive transfer（跨智能体迁移）**：把“学生可解问题的分布”迁移为“教师的教学先验”。与 AlphaGo 论文中“监督学习（KGS 人类棋谱）→ 自博弈”的分段**同构**：SFT 后训练 = 让学生/教师吸收已验证的外部经验。
 - **A 的本义**：教师**在高频但浅层**适配——它是“教学策略的在线搜索”（neural prompt space），不改善表征，但能快速回应学生状态。
 - **两者的数学关系**：A 是 B 的“瞬时算符”，B 是 A 的“慢变量”。严格地讲：
+
 $$\tau_t = \underbrace{\mathrm{evo}\big(\underbrace{\mathrm{post\_train}(\tau_{t-1}, D_{t-1})}_{\text{慢变量(权重)}}, \text{近期反馈}\big)}_{\text{快变量(配置)}}$$
+
   即 **B 提供“能力基调”，A 提供“风向调节”**。
 
 ## 4. 结论与建议（两层教师的最严格形态）

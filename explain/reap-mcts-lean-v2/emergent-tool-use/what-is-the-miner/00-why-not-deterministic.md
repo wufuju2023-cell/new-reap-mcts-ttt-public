@@ -6,6 +6,7 @@
 
 $$
 \mathcal{C}(O) := \arg\min_{u:\ u\ \mathrm{models}\ O}\ \mathrm{K}(u),\qquad \mathrm{K}:\text{Kolmogorov 复杂度}
+
 $$
 
 ## 0.2 定理与推论
@@ -24,6 +25,7 @@ $$
 \mathcal{L}_{\mathrm{mine}}(\psi) :=
 -\mathbb{E}_{(O,c^{\mathrm{ok}})\sim\mathcal{D}_{\mathrm{verified}}}\big[\log M_\psi(c^{\mathrm{ok}}\,\vert\,O)\big]
 +\ \mathbb{E}\Big[\nabla_\psi \log M_\psi(c\,\vert\,O)\cdot \mathrm{kl}(c)\Big]
+
 $$
 
 - $\mathcal{D}_{\mathrm{verified}}$：塔（kernel 验证）正例 + $\mathrm{Refute}$ 桶（负例）；
@@ -36,7 +38,9 @@ $$
 ## 0.4 学习-奖励分离定理（防奖励黑客）
 
 **定理**．设 $\mathrm{gate}$ 与 $M_\psi$ 分离，奖励仅在 $\mathrm{gate}(c)=\mathrm{ok}$ 时取 1：
-$$ \mathbb{P}_\psi[\mathrm{gate}(c)=\mathrm{ok}\ \wedge\ \mathrm{fake}(c)] = 0\qquad (\mathrm{fake}:=\text{语法自举伪规律}) $$
+
+$$\mathbb{P}_\psi[\mathrm{gate}(c)=\mathrm{ok}\ \wedge\ \mathrm{fake}(c)] = 0\qquad (\mathrm{fake}:=\text{语法自举伪规律})$$
+
 因为 $\mathrm{gate}=\text{kernel 裁决}$ 不可欺骗。**推论**：学习自由度只存在于"候选生成"；
 判定层（gate/Refute/F_k 判定）永远确定性——这正是 $\mathcal{I}_{\mathrm{sep}}$ 在挖掘层的显现。
 

@@ -11,15 +11,20 @@
 你的核心断言是：“主任务永远是数学；agentic 技能（实验、反馈验证、信息处理、规律汲取、证明）作为实现数学目标的内生能力被学会”。 其原理性依据有三层：
 1.1 数学任务提供“形式终局裁判”，Agent 训练则没有
 设奖励函数按两种设计：
+
 $$\mathcal{R}_{\text{code-agent}} = \mathbb{E}[\text{task-outcome}]\ \ (\text{文本/测试判据——软弱、可 hack、对噪声敏感})$$
+
 $$\mathcal{R}_{\mathrm{math-agent}} = \mathbb{E}[\mathbb{1}\{\mathrm{kernel}\text{ 证明成立}\} \text{ or }\mathbb{1}\{\text{反例(计算证据)被正式确认}\}]$$
+
 （形式终局 = kernel 证明 或 真反例，两者都经校验）。数学奖励的优越性在于：它不取决于“工具执行得好不好”，而取决于“数学结论成立与否”——工具越好，只是增大了搜索到的状态空间。 于是：
 - 效应层的“不可验证性”（数值、训练、实验噪声）被隔离到状态特征而非奖励；
 - 工具调用（那类 runtime 不可证的东西）不产生奖励，只产生状态更新——这从工程上杜绝了 agent 训练最经典的失败：奖励黑客（conjure rewards 的“工具刷任务分”、无效循环）；
 - 工具的质量被隐式监督（Indirect supervision）：好的工具使用导致形式搜索更成功，经策略梯度反向传播——技能信号的来源是“推理链”，不是“工具反馈”。
 1.2 数学任务是“技能与目标耦合度最高”的科目
 把 agentic 技能构造为算子元组
+
 $$S = (\underbrace{\mathrm{Experiment}}_{\text{计算/实验}},\ \underbrace{\mathrm{Retrieve}}_{\text{库/搜索}},\ \underbrace{\mathrm{Mine}}_{\text{规律提炼}},\ \underbrace{\mathrm{Verify}}_{\text{验证/反证}},\ \underbrace{\mathrm{ProveWrite}}_{\text{证明合成}})$$
+
 代码类 agent 任务训练的是“单一低层技能”（写代码、调用 API），技能之间的耦合松散（“会调 API”≠“会推理”）。数学问题上，以上每个算子都出现在推理链的必要节点上：
 即技能使用是证明的必要路径（否则 Math block）；这个“技能-推理链”结构是绝佳的课程支架：技能在每一代，因难度 $d_g$ 上升而被需要（$d_g$ 越高，实验设计、模式挖掘、检索、抽象、证明越来越难）——技能学习的监督强度随任务难度自动增加。这正是“用数学做主线索训练 agent 技能”的机制：任务内生的“技能需求密度”成为自动课程。
 1.3 技能迁移性的理论条件（必须声明）
@@ -29,16 +34,22 @@ $$S = (\underbrace{\mathrm{Experiment}}_{\text{计算/实验}},\ \underbrace{\ma
 在这两个条件下（我们架构天然满足），数学训练→agentic 技能迁移到别的任务域成立且优于“直接代码训练”（因为后者缺乏“推理必要性”的强信号，导致技能学成“为了用而用”——风险→奖励漂移）。
 2. 一套训练设计的“严格规格”（方案）
 2.0 目标函数
+
 $$\mathcal{L}_{\theta,\phi}= \underbrace{\mathcal{L}_{\mathrm{RL}}\big(\text{数学终局奖励}\big)}_{\text{策略: 证明/反证}} + \underbrace{\lambda_v \mathcal{L}_{V}(\text{可证性}+ \text{技能状态features})}_{\text{价值: 状态是否“接近可证”}}$$
+
 工具的梯度：仅经由价值头与策略头的间接梯度（$\mathrm{tool}$ 调用是路径，不是奖励）。
 2.1 状态定义（这是全部关键）
+
 $$s = \underbrace{(\text{proof ctx},\ \text{env L},\ \mathrm{obs}\text{-history})}_{\text{形式+世界}}$$
+
 - experiment 的输出（数值/曲线/模式）→ 特征（不奖励）
 - retrieve 的结果 → 候选上下文（特征）
 - store（登记引理）→ 库 L 增长（改变后续所有搜索地形 → 影响未来奖励——间接）
 - prove-check → 唯一能产生奖励的形式终局
 2.2 课程结构（难度驱动，教师复用）
+
 $$\mathcal{M}_{g+1} := \{ \text{teacher 产出的，}\ \mathrm{Diff}_g(\cdot) \in [0.5,0.9],\ \mathrm{Sim}\ge 0.7 \}$$
+
 - 难度递升 → 工具需求密度上升 → 技能训练强度上升；
 - 教师已生成的“刚够得着”变体就是“启发式难度”。
 2.3 技能出现的可测判据（我们下一步真正要用的指标）
@@ -49,7 +60,9 @@ C: 抽象深度
 D: 奖励-路径比
 2.4 隐含的“数学是更好的 agent 训练环境”的理论论证
 论证：对于任何 agentic 算子集 $S$，若给定 可判定的终局验证器 $V$（数学提供：kernel/反证）与 状态-特征回注 $O$，则
+
 $$\mathrm{Var}[\mathcal{R}\mid S\text{ 的使用}] \ \text{在数学任务上最小（确定性验证）},\quad \mathrm{Var}[\ldots]_{\text{代码任务上大（集成测试噪声}）$$
+
 因此数学任务的奖励是低方差、可信任的 → 策略梯度估计的方差小 → 对 $\theta$ 的更新更一致，尤其对“使用工具”这种长链决策更可靠。
 （这正是 DeepSeek/AlphaProof-like 系统选择“数学/形式验证”做 RL 的又一个理由：信号质量优先于任务一般性。）
 3. 结论（观点清晰化）

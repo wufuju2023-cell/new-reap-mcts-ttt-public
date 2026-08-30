@@ -45,6 +45,7 @@ This is where our RL value head plugs in.
 
 $$
 R_t = \begin{cases} 1 & \text{solved at } t \\ \gamma^{L - t} & \text{solved at } L \text{ (depth} L\text{)} \\ 0 & \text{exhausted} \end{cases}
+
 $$
 
    with step penalty $-\lambda$ per tactic — two knobs ($\gamma$, $\lambda$).

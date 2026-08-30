@@ -2,7 +2,7 @@
 > 归档：初始提问 + 深度回答（MCTS 于类型化效应语言的程序合成）
 这使我产生了一个新想法，假设Lean这个语言能够被进一步设计，使得它支持更多的 side effect，乃至能够当做脚本语言使用，用作计算机实验、训练神经网络等，那么就可以用 MCTS 去自动写出更好的Lean代码，返回的结果也是Lean（就是Lean此处它的功能给取代那些工具调用产生的Json之类的。这些返回的结果会给出下一步需要去证明的goal之类,可以是为了进一步修复某个bug，也可以就是告诉他发生了什么事情之类的。。），这样子它就可以自动往迭代的。那么是不是我们这套管线它就能够更直接地执行一些智能体任务？用严格数学语言深入思考仔细分析
 
-# Lean 作为唯一“智能体语言”：深入分析（alpha-as-Lean-coding-agent）
+## 0. 背景问答（原始提问 + 深度分析版）
 
 > 背景想法：假设 Lean 语言能够被进一步设计，使得它支持更多的 side effect，乃至能够当做脚本语言使用（计算机实验、训练神经网络等）；那么 MCTS 可以自动写出更好的 Lean 代码，返回结果也是 Lean —— 工具调用的 JSON、可证明目标的 goal、bug 修复反馈、“发生什么事”的观察，全都统一为 Lean 值。这样整套管线能否更直接地执行智能体任务、自动迭代？
 
@@ -16,12 +16,14 @@
 
 于是 MCTS 问题形式成为通用程序合成：
 
-$$\begin{aligned}
+$$
+\begin{aligned}
 \text{state } s &= (\text{proof context},\ \mathrm{Env},\ \mathrm{obs}\text{-history})\\
 \text{action } a &\in \mathcal{A}(s) = \{ P : \Gamma\!\vdash\! P\!:\!\mathrm{Eff}\ R,\ \operatorname{len}(P)\le B \}\\
 \text{transition } T(s,a) &= \mathrm{apply}(\Xi, P,\ \mathrm{Env}) = s'\\
 \text{terminal } \mathcal{G}(s) &= \text{"任务达成"谓词（goal closed / tests pass / loss 收敛 / bug 修复）}
-\end{aligned}$$
+\end{aligned}
+$$
 
 $V_\phi(s)$ 估 $\Pr[\mathcal{G}(s)]$，$\pi_\theta$ 生成 $P$ —— 与证明搜索**数学上是一个对象了**：**每个 agent 子任务（修 bug、训小模型、做实验、探数论）都只是一个“目标谓词”，其余完全同构**。
 
@@ -31,7 +33,10 @@ $V_\phi(s)$ 估 $\Pr[\mathcal{G}(s)]$，$\pi_\theta$ 生成 $P$ —— 与证明
 
 类型检查器是**静态动作过滤网**：
 
-$$\mathcal{A}_{\text{type}}(s) \subsetneq \mathcal{A}_{\text{free}}(s),\qquad \Pr[\text{illegal}]=0\ (\text{类型通过})$$
+$$
+\mathcal{A}_{\text{type}}(s) \subsetneq \mathcal{A}_{\text{free}}(s),\qquad \Pr[\text{illegal}]=0\ (\text{类型通过})
+$$
+
 
 不合法程序（未解析、类型不对）在执行前被拒绝；自由文本 JSON agent 的行动空间里“意图可解释但非法”的比例高得多。作用到样本复杂度上：$p_\theta \to p_\theta' = \Pr[\text{合法且有效}]$ 显著增大——对“搜索指数 $\exp(L^{*})$”的直接压缩。
 

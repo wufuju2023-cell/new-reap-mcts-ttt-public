@@ -10,12 +10,14 @@
 
 $$
 s_t := \text{Lean proof state},\qquad a_t := \text{tactic string},\qquad s_{t+1} = \mathrm{Lean}(s_t, a_t),\qquad r_t := -1
+
 $$
 
 **价值语义（先想清楚 V 是什么）**：
 
 $$
 V_\theta(s) \approx -\ \text{剩余证明的 critical-path steps}
+
 $$
 
 **负值越小，剩余路径越长**（之后会看到为什么负值反而让"接近完成"表现为 V̄ 接近 0，从而 Q 大）。
@@ -32,6 +34,7 @@ Vθ(s′) --seed + backup--> V̄(s′) = valueSum(s′) / N(s′)
 
 $$
 Q_{\mathrm{OR}}(s,a) = \gamma^{-\bar V(s')},\qquad 0<\gamma<1
+
 $$
 
 **直观**：普通 OR tactic 边上，child 越接近完成（$\bar V$ 越接近 0），$Q$ 越大。
@@ -43,6 +46,7 @@ PUCT 选边（与 AlphaZero 结构同构）：
 $$
 U(s,a) = c_{\mathrm{puct}}\, P(s,a)\,\frac{\sqrt{N(s)}}{1+N(s,a)},\qquad
 a^\star = \arg\max_a \big[\, Q_{\mathrm{Reap}}(s,a) + U(s,a) \,\big]
+
 $$
 
 实现口径（`v1-spec/02-mcts-verifier.md`，与 reap Options 一致）：
@@ -51,6 +55,7 @@ $$
 c(N)=c_{\mathrm{init}}+\ln\frac{N+c_{\mathrm{base}}+1}{c_{\mathrm{base}}},\quad
 \hat p_i=e^{\log p_i},\ p_i=\hat p_i/\mathrm{sum},\quad
 Q_i^{(\mathrm{OR})}=\gamma^{-1-v_i}-\mathrm{stepcost},\quad Q_i^{(\mathrm{AND})}=1-v_i
+
 $$
 
 - 默认：`c_init=0.001`、`c_base=3.2`、$\gamma=0.99$、prior 温度 $\tau=50$。
@@ -61,6 +66,7 @@ $$
 
 $$
 V_{\mathrm{AND}}(s) = \min_i V(s_i)\quad(\text{本例} = -8)
+
 $$
 
 **最难的子目标决定 critical path**。

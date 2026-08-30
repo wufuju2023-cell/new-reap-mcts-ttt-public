@@ -22,6 +22,7 @@ $$h_\theta: 7\mathrm{B}\ \mathrm{backbone},\qquad \pi=(\pi_p,\pi_m),\quad V_p=\m
 
 $$
 \mathcal{L}_{\mathrm{joint}} := \alpha_g\,\mathcal{L}_{\mathrm{prove}}(\theta,\phi_p) + (1-\alpha_g)\,\mathcal{L}_{\mathrm{mine}}(\theta,\phi_m) + \beta\,\mathrm{KL}[\pi\,\|\,\pi_{\mathrm{ref}}]
+
 $$
 
 课程：$\alpha_g$ 随代际递减（先证明、后挖掘渗透）。
@@ -31,6 +32,7 @@ $$
 $$
 \mathrm{miner}(O)\Rightarrow c\in\mathcal{F}_k \Rightarrow L\uparrow \Rightarrow \mathrm{prove}(t\mid L)\ \text{步数}\downarrow
 \Rightarrow \mathcal{L}_{\mathrm{prove}}\downarrow \Rightarrow (\text{教师}) \text{新课程} \Rightarrow \ldots
+
 $$
 
 对应指标 TowerDelta（§5）因果链的正向版本：$\rho(\Delta\tau_g,\mathbb{1}[c\ \mathrm{in\ tower}])>0$。
