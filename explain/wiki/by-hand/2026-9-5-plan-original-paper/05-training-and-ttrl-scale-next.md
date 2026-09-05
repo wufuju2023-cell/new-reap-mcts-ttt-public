@@ -8,8 +8,8 @@ V1 已训练，不等于 V1 已达到 AlphaProof 的训练规模。
 | --- | --- | --- |
 | base | 3B encoder-decoder，巨量预训练 | frozen REAL-Prover 7B backbone |
 | value | categorical remaining return | categorical verified remaining-action distance |
-| Lean SFT | 约 300k pairs | R2 混合 batch 中每次 1 条 Mathlib action |
-| replay | 大规模 self-generated proof/disproof | R2 两次 batch，共 18 replay + 2 Mathlib action rows |
+| Lean SFT | 约 300k pairs | 本地 R2 混合 batch 中每次 1 条 Mathlib action；uploaded full-v3 的训练量不能从 snapshot 名称推断 |
+| replay | 大规模 self-generated proof/disproof | 本地 R2 两次 batch，共 18 replay + 2 Mathlib action rows；这不自动等于 full-v3 的训练数据 |
 | main RL | 约 1M learner steps | V1 已有 learner/release/recovery mechanism，真实更新仍很少 |
 | TTRL variants | 数十万 target variants | 没有等规模的 V1 variant curriculum / paired target result |
 
@@ -24,7 +24,7 @@ V1 的正确科学定位是：**shared-backbone joint learner 已经真实运行
 | critic calibration | theorem-level holdout、同一 prompt | $\hat d$ 是否与 verified remaining distance 有排序 / 校准关系 |
 | value ablation | 同 policy、同 candidates、同 simulation budget | value-on 是否比 value-off 更快或更常找到 verified proof |
 | prior ablation | 同 release、同 budget | real policy prior 是否比 uniform prior 更有效 |
-| release regression | R2 与 frozen base / ancestor release | joint updates 有没有引入净增益或回归 |
+| release regression | uploaded full-v3、R2 与 frozen base | 各 artifact 的 joint updates 有没有净增益或回归 |
 
 主要指标应是 verified solve@budget、nodes-to-proof、wall time、distance ranking、calibration 和 failure taxonomy；不能只报 CE loss。
 
@@ -32,7 +32,7 @@ V1 的正确科学定位是：**shared-backbone joint learner 已经真实运行
 
 下一阶段应扩大的是 **经完整 Lean replay 验证的 action rows**，并保留 current contract：
 
-1. 先把 $d=1,\ldots,8$ 都覆盖，记录 class histogram；
+1. 对被评测 artifact 报告全部 $d=1,\ldots,D$ 的 class histogram；
 2. theorem-level split，不能让同一证明的相邻 states 跨 train / holdout；
 3. 持续混合 verified generated rows 与 Mathlib rows；
 4. 每个 release 记录 source mix、base / adapter / head identity、KL、support overflow；
@@ -57,7 +57,7 @@ V1 只有同时满足下列条件时，才应称为 AlphaProof-style target TTRL
 
 | 阶段 | V1 目标 | 通过门 |
 | --- | --- | --- |
-| A | R2 artifact load + endpoint fixtures | identity 和 protocol 全部一致 |
+| A | uploaded full-v3 artifact load + endpoint fixtures | identity 和 protocol 全部一致 |
 | B | distance coverage + theorem holdout | critic calibration 和 value-on 不劣化 |
 | C | 持续 verified replay / mixed learner | 多 release 的 fixed-budget gain |
 | D | 小型 deterministic variants | 相比 search-only 的 paired target gain |

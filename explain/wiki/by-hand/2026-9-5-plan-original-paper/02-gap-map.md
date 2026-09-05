@@ -18,7 +18,7 @@
 | 项 | AlphaProof | V1 | 研究含义 |
 | --- | --- | --- |
 | base architecture | 3B encoder-decoder | frozen REAL-Prover 7B causal LM + LoRA + external categorical head | 合理替代，但必须用 benchmark 证明 search 效果 |
-| categorical support | 论文正文未公开精确 support | 当前 R2 为距离 1..8，overflow reject | 远距离 proof 的表达能力尚未测量 |
+| categorical support | 论文正文未公开精确 support | uploaded full-v3 为 64-bin；本地 R2 为独立 8-bin artifact | 每个 artifact 的 support、overflow 和 decoder 必须独立评测 |
 | autoformalization curriculum | 约 80M formal problems | V1 真实训练是小型 verified replay / Mathlib mixed batches | 最大差距是数据与 curriculum，不是 head 是否存在 |
 | main RL | 约 1M steps、actors、matchmaker、learner | V1 已有 learner/release/consumer 机制，但真实更新数很少 | 需要先评估，再逐步扩 actor/replay |
 | prove / disprove | 论文把两者纳入大课程 | V1 有 proof / refutation collector evidence，但尚未形成大规模对称 curriculum | 需要明确 per-objective stats 和 heldout |

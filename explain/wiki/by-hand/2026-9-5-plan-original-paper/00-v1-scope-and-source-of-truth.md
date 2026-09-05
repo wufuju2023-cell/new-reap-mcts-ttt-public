@@ -37,7 +37,9 @@ h_{7B}(s)\in\mathbb{R}^{3584}
 \mathrm{Linear}(256,D).
 $$
 
-输出为 $D$ 个 categorical logits。V1 R2 release 的实际 support 是 $D=8$，距离类别为 $1,\ldots,8$。
+输出为 $D$ 个 categorical logits。support 必须随 artifact identity 读取，不能从另一个 V1 run 推断。
+
+当前上传的 full-v3 snapshot 明确为 $D=64$；本地曾恢复消费的 R2 release 为 $D=8$。二者都是 V1 family 的真实 artifact，但 shape、support、weights 和 provenance 不可互换。本系列将 uploaded full-v3 作为待评测 artifact，而把 R2 只当作 V1 runtime / recovery 的历史证据。
 
 这里“共享同一基座”有精确含义：policy 和 critic 共用冻结 7B 表示与 active LoRA policy representation；value head 本身仍是独立的 4 个可训练 tensors。它不是全基座 full fine-tuning。
 
@@ -68,7 +70,7 @@ $$
 $$
 \mathrm{return}=-d,\qquad
 \mathrm{class}=d-1,\qquad
-d\in\{1,\ldots,8\}.
+d\in\{1,\ldots,D\}.
 $$
 
 单链时 $d$ 就是剩余步骤数。AND node 时 value 是负 return 的最小值，因此正距离是未完成子目标中的最长分支：
@@ -82,7 +84,7 @@ $$
 server 从 categorical distribution 得到正的 expected distance：
 
 $$
-\hat d(s)=\sum_{d=1}^{8}d\,p_\phi(d\mid s).
+\hat d(s)=\sum_{d=1}^{D}d\,p_\phi(d\mid s).
 $$
 
 Lean / MCTS consumer 将其取负，恢复 negative-return 约定。
@@ -92,7 +94,7 @@ Lean / MCTS consumer 将其取负，恢复 negative-return 约定。
 | 可以说 | 不能说 |
 | --- | --- |
 | V1 shared-backbone critic 已训练、发布、恢复并被服务消费 | 它已经是好 critic 或强泛化模型 |
-| V1 R2 的 policy/value endpoint 实际运行 | 它已经在 heldout 上优于 baseline |
+| 本地 V1 R2 的 policy/value endpoint 实际运行 | uploaded full-v3 已在 heldout 上优于 baseline |
 | V1 有 categorical remaining-action target | 它已经复现 AlphaProof 规模 |
 | full-v3 是 artifact 的实验编号 | full-v3 本身说明模型能力 |
 

@@ -14,7 +14,7 @@ Hugging Face artifact 可读后，先生成不可变 identity record：
 | release / checkpoint metadata | 是 |
 | full-v3 发布名 | 仅作 distribution label，不作能力解释 |
 
-如果 uploaded artifact 与 V1 R2 contract 不匹配，应创建新的 run identity，不能覆盖 R2 的记录。
+如果 uploaded artifact 与任一已有 V1 contract 不匹配，应创建新的 run identity，不能覆盖任何历史 release 的记录。
 
 ## 1. 只读加载与 protocol smoke test
 
@@ -35,7 +35,7 @@ Hugging Face artifact 可读后，先生成不可变 identity record：
 | --- | --- | --- |
 | value-on / value-off | same release、theorems、candidates、budget | critic 的 search contribution |
 | real-prior / uniform-prior | same release、budget | policy prior contribution |
-| R2 / frozen-base | same search configuration | joint training 的 net effect |
+| uploaded full-v3 / R2 / frozen-base | same search configuration | 各 artifact 的 joint training net effect |
 | observed-distance strata | same budget | 对 $d=1..4$ 与未见 bucket 的行为 |
 
 所有结果都应以独立 Lean final check 为准。
@@ -55,8 +55,8 @@ Hugging Face artifact 可读后，先生成不可变 identity record：
 
 | 想增加什么 | 前置证据 |
 | --- | --- |
-| 更多 replay rows | V1 R2 load 与 critic ablation 已完成 |
-| 更大 support | class coverage、shape migration、old R2 baseline 已保留 |
+| 更多 replay rows | uploaded full-v3 load 与 critic ablation 已完成 |
+| 更大 support | class coverage、shape migration、uploaded full-v3 与 R2 baselines 已保留 |
 | 更多 actor / learner updates | fixed-budget heldout 不回归 |
 | target variants | generalist baseline 和 target paired matrix 已建立 |
 

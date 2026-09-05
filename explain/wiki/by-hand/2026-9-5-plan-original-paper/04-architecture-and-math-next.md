@@ -4,10 +4,10 @@ V1 的 value contract 已经存在；下一步是冻结并验证它，不是把�
 
 ## 1. 必须保持的 V1 合同
 
-对 R2 release：
+对任一 V1 categorical artifact：
 
 $$
-d\in\{1,\ldots,8\},\qquad
+d\in\{1,\ldots,D\},\qquad
 y=\mathrm{return}=-d,\qquad
 k=d-1.
 $$
@@ -16,7 +16,7 @@ head 输出 logits $z\in\mathbb{R}^{8}$：
 
 $$
 p_\phi(d\mid s)=\mathrm{softmax}(z)_d,\qquad
-\hat d(s)=\sum_{d=1}^{8}d\,p_\phi(d\mid s).
+\hat d(s)=\sum_{d=1}^{D}d\,p_\phi(d\mid s).
 $$
 
 value endpoint 的数是正 expected distance；Lean / search 一侧把它映射到：
@@ -32,7 +32,7 @@ V(s_{\mathrm{AND}})=\min_i V(s_i)
 =-\max_i \hat d(s_i).
 $$
 
-这是 remaining critical-path distance。任何把它换成 Tanh、sigmoid、任意 score 或未标版本的 64-bin head 的修改，都是新的 artifact contract，不能静默兼容 R2。
+这是 remaining critical-path distance。任何更换 head shape、support、decoder、Tanh/sigmoid/scalar 形式或 checkpoint schema 的修改，都是新的 artifact contract，不能静默兼容另一个 V1 snapshot。
 
 ## 2. 现有 V1 protocol 要测，不要假定
 
@@ -50,7 +50,7 @@ V1 runtime 已经具备 token-logprob、categorical value、LoRA/value joint upd
 
 ## 3. 当前 support 的真实风险
 
-当前 R2 support 是 $1,\ldots,8$，但最近两批训练实际只观察到距离 $1,\ldots,4$。因此最先要测的是：
+uploaded full-v3 support 是 $1,\ldots,64$；本地 R2 support 是 $1,\ldots,8$，且最近两批只观察到距离 $1,\ldots,4$。因此最先要测的是：
 
 1. predicted distribution 是否在 seen classes 外无意义地饱和；
 2. 距离超过 8 的真实 trajectory 如何被明确拒绝、统计和报告；
@@ -61,8 +61,8 @@ V1 runtime 已经具备 token-logprob、categorical value、LoRA/value joint upd
 - 新 head shape；
 - 新 dataset support / overflow rule；
 - 新 checkpoint schema / migration decision；
-- 旧 R2 baseline 保留不变；
-- 统一 holdout 下的 $D=8$ 与 $D>8$ ablation。
+- uploaded full-v3 与 R2 baseline 都保留不变；
+- 统一 holdout 下的 $D=64$、$D=8$ 与新 artifact 的 ablation。
 
 不能只改一个 max-distance 参数，然后把旧 artifact 当成新 head 加载。
 

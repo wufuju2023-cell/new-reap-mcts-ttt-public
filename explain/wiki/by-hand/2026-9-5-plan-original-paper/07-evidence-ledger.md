@@ -27,6 +27,7 @@ release-time code archive 与本地 V1 source 文件 hash 对齐；因此这里�
 | R2 fresh-service consumption | evidence/current/latest-recovery-gpu |
 | policy candidates 与 value 实际经 HTTP 返回 | recovery service intents / responses / report |
 | recovery run 通过 8 gates | latest-recovery-gpu report |
+| uploaded full-v3 snapshot | Hugging Face manifest / session：220,477,868-byte backend、adapter + value_head transfer、independent Lean acceptance |
 
 latest-release wrapper 的最终 transport failure 不会抹掉已经完成并有 receipt 的 step-2 release；后续 recovery 以 exact published release 完成独立消费验证。两者应一起报告，不能只摘取任一侧。
 
@@ -40,4 +41,4 @@ latest-release wrapper 的最终 transport failure 不会抹掉已经完成并�
 | V1 优于 base | paired fixed-budget comparison |
 | V1 已达到 AlphaProof TTRL | target variants、focused RL、paired target results、规模报告 |
 
-当前 V1 已满足前两行，不满足后三行。这个边界比“上传了模型”或“训练 loss 变化”更能保护实验结论。
+uploaded full-v3 满足“artifact 可取得、adapter + head 有 acceptance provenance”；本地 R2 满足“fresh V1 runtime 已恢复服务”。两者都还不满足“critic 有用 / 已校准”。这个边界比“上传了模型”或“训练 loss 变化”更能保护实验结论。
