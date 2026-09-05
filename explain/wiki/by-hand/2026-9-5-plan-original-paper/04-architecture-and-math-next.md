@@ -1,111 +1,91 @@
-# 04 — 下一步：先统一架构与数学不变量
+# 04 — V1 架构与数学合同：保留、验证、扩展
 
-这一页是实现顺序，不是“再加一个 loss”的清单。前两项没有完成前，不应扩大训练。
+V1 的 value contract 已经存在；下一步是冻结并验证它，不是把它替换成旧 scalar prototype。
 
-## P0 — 定义唯一的 policy/value/search 合同
+## 1. 必须保持的 V1 合同
 
-建议采用与 AlphaProof 对齐、但可由 decoder-only 7B 实现的合同：
-
-$$
-p_\phi(d\mid s),\qquad d\in\{0,\ldots,D_{\max}\}\cup\{\text{overflow}\}.
-$$
-
-令 $d$ 是完成 state 的最长剩余分支 tactic 数，终态为 $d=0$。从 critic 解码：
+对 R2 release：
 
 $$
-\bar D(s)=\mathbb{E}_{p_\phi}[d],\qquad
-V(s)=-\bar D(s),\qquad
-Q(s,a)=\gamma^{-V(s,a)-1}.
+d\in\{1,\ldots,8\},\qquad
+y=\mathrm{return}=-d,\qquad
+k=d-1.
 $$
 
-对 AND state：
+head 输出 logits $z\in\mathbb{R}^{8}$：
 
 $$
-D(s_{\mathrm{AND}})=\max_i D(s_i),\qquad
-V(s_{\mathrm{AND}})=\min_i V(s_i).
+p_\phi(d\mid s)=\mathrm{softmax}(z)_d,\qquad
+\hat d(s)=\sum_{d=1}^{8}d\,p_\phi(d\mid s).
 $$
 
-这里的 64 只能作为 Reap 的候选 $D_{\max}$，不是论文正文确认的 AlphaProof bin 数。必须为 overflow / timeout 另写策略，不能静默 clamp 后伪装成已完成的短 proof。
-
-**验收：**
-
-- 同一个 state 在 generator、trainer、replay exporter、MCTS 和 HTTP response 中具有同一符号、单位和 decoder。
-- checkpoint metadata 强制包含 base revision、head kind、support、target version、prompt hash 和 tokenizer hash。
-- scalar legacy checkpoint 不允许在 categorical server 中静默加载；反之亦然。
-- 用人工小树测试 OR backup、AND backup、terminal、overflow 和 $\gamma$ 的数值。
-
-## P1 — 让 MCTS 获得真实 policy prior
-
-公开路径要返回每个 completion 对应的生成 token IDs、token logprobs 与精确序列总和：
+value endpoint 的数是正 expected distance；Lean / search 一侧把它映射到：
 
 $$
-\log\pi(a\mid s)=\sum_{t\in a\,+\,\mathrm{EOS}}\log\pi(a_t\mid s,a_{<t}).
+V(s)=-\hat d(s).
 $$
 
-不要用 token average 代替 action probability，也不要把 prompt token、thinking prefix、被截断的 tactic 或第二个 EOS 算进 action。Lean consumer 和 GPU server 对同一条 canonical tactic 必须得到相同 logprob。
+AND state 的语义是：
 
-**验收：**
+$$
+V(s_{\mathrm{AND}})=\min_i V(s_i)
+=-\max_i \hat d(s_i).
+$$
 
-1. golden prompt + tactic fixture 给出精确 token 边界；
-2. server 输出与本地 teacher-forced forward 的总 logprob 在容差内相等；
-3. 两个不同概率的 valid tactics 在 PUCT first selection 产生不同 prior；
-4. 缺失 logprob 是 hard error 或显式 uniform-baseline mode，绝不是悄悄回退。
+这是 remaining critical-path distance。任何把它换成 Tanh、sigmoid、任意 score 或未标版本的 64-bin head 的修改，都是新的 artifact contract，不能静默兼容 R2。
 
-这一步通常比增加 simulation budget 更有价值：否则 PUCT 没有使用 policy 的强弱。
+## 2. 现有 V1 protocol 要测，不要假定
 
-## P2 — 把搜索语义固定成可回放工件
+V1 runtime 已经具备 token-logprob、categorical value、LoRA/value joint update、snapshot / release 和 recovery 路径。下一轮应把这些已有能力做成可重复的 fixture：
 
-每次 search 应产出不可变 trace，至少包括：
-
-| 字段 | 为什么需要 |
+| fixture | 必须验证 |
 | --- | --- |
-| canonical state / state hash | dedup、训练数据去重、复放 |
-| tactic 原文与 canonical action | 策略标签与 token-logprob 绑定 |
-| Lean verdict / successor hashes | 只让 verifier 决定合法转移 |
-| root-to-node AND/OR path | 正确计算 longest-branch target |
-| visit counts、prior、version、budget | 解释 PUCT 选择和做 imitation / replay |
-| final proof、independent check receipt | 训练准入与安全边界 |
+| policy token scoring | tactic 的 token 序列、EOS 边界、总 logprob 与 teacher-forced scoring 一致 |
+| value decoding | 固定 logits 的 expected distance 与 Lean 侧负号相同 |
+| trajectory target | terminal、OR action、AND split 的 return / class 正确 |
+| release loading | adapter、head、base contract、support 与 tokenizer 都一致 |
+| isolation | 新 session 使用 release，旧 session 不被新 learner update 改写 |
 
-随后逐项验证：持续单树、invalid discard、local duplicate merge、progressive sampling、AND-node min backup、final independent Lean check。无法 replay 的 trace 不进入训练。
+这些是 compatibility tests，不是另起一套模型设计。
 
-要把“局部 textual merge”与“全局语义 canonicalization”分开测量；不要因为两条 sibling tactic 的 pretty-print 相同，就宣称已经有完整 transposition table。
+## 3. 当前 support 的真实风险
 
-## P3 — 重新划分“失败”的用途
+当前 R2 support 是 $1,\ldots,8$，但最近两批训练实际只观察到距离 $1,\ldots,4$。因此最先要测的是：
 
-论文的主要 learner 从成功 proof/disproof 提取 pairs；timeout / 无解会影响 matchmaker 的优先级和预算。Reap 第一版也应分开：
+1. predicted distribution 是否在 seen classes 外无意义地饱和；
+2. 距离超过 8 的真实 trajectory 如何被明确拒绝、统计和报告；
+3. 扩大 support 是否会改变 checkpoint shape、class mapping、loss 与 search decoder。
 
-| 事件 | 用于 policy/value supervised replay | 用于 scheduler / diagnostics |
-| --- | --- | --- |
-| 最终独立 Lean 验证的 proof / disproof | 是 | 是 |
-| tactic parse / execution error | 否 | 是 |
-| timeout / budget exhausted | 否 | 是 |
-| 不完整但合法的中间 state | 仅作为已验证成功轨迹的一部分 | 是 |
+若要扩至 $D>8$，应发布新的 V1-compatible-next contract：
 
-这避免把“这次预算不足”错误地标成“这个 action 语义上很差”。
+- 新 head shape；
+- 新 dataset support / overflow rule；
+- 新 checkpoint schema / migration decision；
+- 旧 R2 baseline 保留不变；
+- 统一 holdout 下的 $D=8$ 与 $D>8$ ablation。
 
-公开树目前没有 executable certified-disproof pipeline。因此短期 P0 可以只训练 verified proofs，但 replay schema 必须预留 objective / verdict 字段；实现 disproof 后再把它接入对称的训练与调度逻辑。
+不能只改一个 max-distance 参数，然后把旧 artifact 当成新 head 加载。
 
-## P4 — generalist 和 target specialist 分层
+## 4. 模型共享的边界
 
-建议把参数角色显式写入版本名：
+“value 和 policy 共享 7B”并不意味着所有参数都以相同方式更新：
 
-    base → sft/generalist → main-rl-generalist → target-specialist(T, variant-set)
+| 参数组 | V1 状态 |
+| --- | --- |
+| REAL-Prover 7B base | 冻结 |
+| LoRA adapter | policy loss、KL 与 joint learner update 会改变 |
+| categorical value head | categorical CE 会改变 |
+| optimizer / RNG / buffer | learner 私有，不随 release 直接继承到新 search session |
 
-- generalist 的 replay 只能来自训练 curriculum；
-- target-specialist 从冻结 generalist clone，训练数据明确标为 target / variant；
-- target-specialist 不回写 generalist，除非通过独立、去泄漏的 generalization gate；
-- evaluation 时报告 fresh-generalist、search-only、specialist 各自的结果。
+这给了 V1 一个清晰的实验单位：release 是 adapter + head，base 是固定环境。任何 future result 都应标明这三者的 identity。
 
-这是防止“在测试题上训练过”与“test-time adaptation”叙述混淆的最小结构。
+## 5. 与 AlphaProof 的数学对齐
 
-## P5 — matchmaker 的最小可用版
+AlphaProof 论文的关键不是“必须用某个 bin 数”，而是：
 
-不必一开始复制论文的 TPU 集群，但应该先有一致的逻辑：
+- value 是剩余 proof work 的分类分布；
+- AND backup 对应 hardest subgoal；
+- value 和 policy 共同引导 search；
+- 训练标签由 formal verifier grounding。
 
-1. start positions 有 stable ID、source、split、prove/disprove objective；
-2. scheduler 优先新题、低尝试数题和近期成败混合的题；
-3. 连续失败提高 search budget 到 cap；连续掌握降低优先级；
-4. actor 只回传 verifier artifacts；learner 从 immutable replay buffer 采样；
-5. learner 固定保留一部分 Mathlib SFT replay，防止窄 self-play 退化。
-
-当前公开 V1 driver 是串行脚本，且 RolloutSink 尚未接入实际 upstream MCTS；先接通单 actor 的 end-to-end verified replay，再扩并发。完成 P0–P2 后再实现 P5，才能知道 scheduler 放大的究竟是有意义的 search 还是 uniform-prior noise。
+V1 已满足这些语义骨架。下一步的数学问题是估计误差、support coverage 和 search usefulness，而不是重新命名 value。

@@ -1,73 +1,66 @@
-# 05 — 下一步：训练规模与真正的 TTRL
+# 05 — V1 训练规模与 TTRL：先把已训练 release 测清楚
 
-## 先校正“规模太小”的含义
+## 当前 V1 的规模定位
 
-是的，当前可见的 TTT / replay 实验相对 AlphaProof 原论文非常小；但比较不能只看 7B 大于 3B。
+V1 已训练，不等于 V1 已达到 AlphaProof 的训练规模。
 
-| 维度 | AlphaProof 论文 | 本地已审计 7B 证据 | 结论 |
-| --- | --- | --- | --- |
-| base | 3B encoder-decoder，巨量 pretraining | REAL-Prover 7B frozen base | 参数更多不替代 RL curriculum |
-| Lean SFT | 约 300k pairs | 少量 Mathlib / verified replay steps 的机制性实验 | 还不是 SFT-scale 对齐 |
-| RL start positions | 约 80M formal statements | 少量课程题和 target 周边题 | 不具备 broad main-RL coverage |
-| main RL | 约 1M learner steps，约 80k TPU-days | 9 个 success-finalization receipt 合计约 21 条 trajectory state/action rows；少数 online updates | 只能验证管线，不验证 scaling |
-| target variants | 数十万级；ablation 到 100k | 小型手工课程或少量变体 | 应称 micro-TTT，不是 TTRL |
-| target compute | 50–500 TPU-days / target | 单卡、短 search / update | 目标是机制验证，不应做性能等价宣称 |
+| 维度 | AlphaProof 论文 | V1 实际已验证状态 |
+| --- | --- | --- |
+| base | 3B encoder-decoder，巨量预训练 | frozen REAL-Prover 7B backbone |
+| value | categorical remaining return | categorical verified remaining-action distance |
+| Lean SFT | 约 300k pairs | R2 混合 batch 中每次 1 条 Mathlib action |
+| replay | 大规模 self-generated proof/disproof | R2 两次 batch，共 18 replay + 2 Mathlib action rows |
+| main RL | 约 1M learner steps | V1 已有 learner/release/recovery mechanism，真实更新仍很少 |
+| TTRL variants | 数十万 target variants | 没有等规模的 V1 variant curriculum / paired target result |
 
-最终 Pell target 的在线 update 数为 0：它先被搜索解出，之后只有 1 条已验证 action 的 finalization update。整个历史课程搜索中记录的 online optimizer updates 也只有个位数。这足以确认参数确实被更新过，不足以得到一个校准良好的 general critic。
+V1 的正确科学定位是：**shared-backbone joint learner 已经真实运行；规模、coverage 和价值质量尚未建立。**
 
-对开源项目的合理目标不是复制 180,000 TPU-days，而是让每一个缩小的阶段仍然保留论文的因果结构：**相关变体 → verified search → replay → joint policy/value update → paired evaluation**。
+## 先做四个固定基线
 
-## 阶段化规模路线
+在扩数据、扩 GPU 或做 target TTRL 前，使用已上传的同一 V1 artifact 做以下 paired tests：
 
-下表给出可停、可测、可扩张的推荐门槛。数字是 Reap 的初始研究目标，不是论文声称，也不是不满足就不准实验的硬件要求。
+| 测试 | 固定项 | 要回答的问题 |
+| --- | --- | --- |
+| critic calibration | theorem-level holdout、同一 prompt | $\hat d$ 是否与 verified remaining distance 有排序 / 校准关系 |
+| value ablation | 同 policy、同 candidates、同 simulation budget | value-on 是否比 value-off 更快或更常找到 verified proof |
+| prior ablation | 同 release、同 budget | real policy prior 是否比 uniform prior 更有效 |
+| release regression | R2 与 frozen base / ancestor release | joint updates 有没有引入净增益或回归 |
 
-| 阶段 | 训练对象 | 最低有用规模 | 必须报告 | 进入下一阶段的 gate |
-| --- | --- | --- | --- | --- |
-| S0：恢复与基线 | historic artifact 或 fresh base | 0 个新训练样本 | artifact status、head contract、固定 eval split | 能加载或明确 fresh-base；无随机 head 冒充已训练 |
-| S1：critic 校准 | frozen policy + value head | 至少 10k verified trajectories 或 100k theorem-separated states | CE / MAE、rank accuracy、reliability、长度分布 | value-on 在固定 budget search 不劣于 uniform / value-off |
-| S2：small generalist loop | policy + critic | 至少 10k distinct start positions，持续累积 verified proof/disproof replay | attempts、successes、states、proof/disproof 比、GPU-hours、solve@N | 对 held-out theorem split 有可重复的 solve@N 或 efficiency gain |
-| S3：growth loop | matchmaker + actors + learner | 逐步扩至 100k+ start positions与百万级 state–tactic pairs | curriculum coverage、replay age、SFT:replay ratio、KL、regression | 多个 seed / checkpoint 的增益稳定，非单题偶然成功 |
-| S4：target specialist | cloned generalist + variants | 每 target 先 1k，再 10k；只有质量过关才探索 100k+ | variant acceptance、dedup、distance-to-target、on/off gain | target proof rate 与 compute 曲线优于 search-only |
+主要指标应是 verified solve@budget、nodes-to-proof、wall time、distance ranking、calibration 和 failure taxonomy；不能只报 CE loss。
 
-这里的 states 是经 theorem-level split 后的训练单元，不能把同一 proof 的相邻 100k states 误报为 100k 独立问题。
+## 从当前 V1 扩展 replay
 
-## 从 micro-TTT 到 TTRL 的定义门
+下一阶段应扩大的是 **经完整 Lean replay 验证的 action rows**，并保留 current contract：
 
-一个 run 只有同时满足下列条件时才应叫 TTRL：
+1. 先把 $d=1,\ldots,8$ 都覆盖，记录 class histogram；
+2. theorem-level split，不能让同一证明的相邻 states 跨 train / holdout；
+3. 持续混合 verified generated rows 与 Mathlib rows；
+4. 每个 release 记录 source mix、base / adapter / head identity、KL、support overflow；
+5. 用固定 holdout gate 决定是否发布下一 release。
 
-1. 从固定 main-RL generalist 初始化 isolated target specialist；
-2. 目标题以外存在显式、版本化、经 Lean syntax / elaboration 检查的相关 variant set；
-3. actor 在 target + variants 上产生新的 verified trajectories；
-4. learner 对 policy 和 value 以可追溯 replay 更新；
-5. 有同 budget 的 search-only、micro-update、variant-TTRL 三路 paired evaluation；
-6. target / variant 数据不会悄悄污染 generalist eval。
+目标不是任意设一个大数字，而是让每次扩容都有可检验的因果结果。达到稳定 value-on 增益前，不应把更多训练 steps 当作默认进步。
 
-仅在一个节点上用 REINFORCE、CE 或 TD 做 1–16 次更新仍有研究价值，但应称为 online adaptation 或 micro-TTT。
+## TTRL 的最低定义
 
-## variant curriculum 的质量优先于数量
+V1 只有同时满足下列条件时，才应称为 AlphaProof-style target TTRL：
 
-论文的变体生成不是随机改变量名。Reap 应为每个 variant 记录：
+1. 从固定 generalist V1 release clone 出 isolated target specialist；
+2. 生成并 Lean 检查明确版本化的 target variants；
+3. 在 target + variants 上产生新的 verified replay；
+4. 使用已有 joint policy/value learner 更新 specialist；
+5. 对同一 target 做 search-only、target-only update、variant-focused update 的 paired comparison；
+6. target data 不反向污染 generalist holdout。
 
-| 字段 | 作用 |
-| --- | --- |
-| parent / target ID 与 mutator | 追溯学习路径 |
-| Lean parse / elaboration verdict | 过滤无效对象 |
-| transformation family | simplify、generalize、lemma、analogy、decomposition 等 |
-| structural distance 与 string similarity | 防止全是近重复或全是无关题 |
-| proof / disproof outcome、attempt history | 给 scheduler 使用 |
-| split / leakage label | 防止把 eval proof 改写后回流训练 |
+单题内少量 update 可以继续称为 V1 online adaptation，但不能替代上述 variant curriculum。
 
-建议先实现确定性 mutators 和人工审查的小 variant set，再加入 LLM generator。否则系统会先吞掉大量无关或不可 elaboration 的候选，规模只会放大噪声。
+## 面向论文规模的务实路线
 
-## 每个 target 的实验矩阵
+| 阶段 | V1 目标 | 通过门 |
+| --- | --- | --- |
+| A | R2 artifact load + endpoint fixtures | identity 和 protocol 全部一致 |
+| B | distance coverage + theorem holdout | critic calibration 和 value-on 不劣化 |
+| C | 持续 verified replay / mixed learner | 多 release 的 fixed-budget gain |
+| D | 小型 deterministic variants | 相比 search-only 的 paired target gain |
+| E | 质量审计后的 large variant curriculum | variant quality、compute、gain 三者关系清楚 |
 
-用完全相同的 base、prompt、candidate count、simulation budget、wall-clock cap、retrieval 和 seed bundle 比较：
-
-| 组 | 参数更新 | 训练题 | 目的 |
-| --- | --- | --- | --- |
-| A | 无 | target | search-only baseline |
-| B | 少量 target-only | target | micro-TTT 的净效应 |
-| C | focused replay | target + checked variants | TTRL 的净效应 |
-| D | 如 C，但随机／无关 variants | 对照 | 证明“相关课程”而非训练次数起作用 |
-
-主要结果是 solve@budget、time-to-first-proof、verified trajectory yield 和最终 proof length；loss 只能作为诊断。若 C 没有比 A/B 稳定好，先检查 variant quality、prior、critic calibration 和 replay，而不是盲目提高学习率或增加 epochs。
+论文的 10k–100k+ variants 可以作为远期量级参照，但现在最有价值的是先用 V1 已存在的 architecture 证明每一步扩容值得。

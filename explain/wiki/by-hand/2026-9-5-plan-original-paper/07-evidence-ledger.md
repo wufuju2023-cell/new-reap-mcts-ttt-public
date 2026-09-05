@@ -1,61 +1,43 @@
-# 07 — 证据定位表与断言边界
+# 07 — V1 证据定位表
 
-本页让读者能区分“论文事实”“公开源码事实”“历史实验记录”，而不必相信叙述性总结。
+本表只列 V1 release-time code 和真实结果。它不以旧文档或公开 prototype 作为架构证据。
 
-## 论文定位
+## V1 源码
 
-| 断言 | 随附 PDF 定位 |
+| 结论 | source of truth |
 | --- | --- |
-| 3B encoder-decoder，policy + categorical value | AP pp. 3、9 |
-| $-1$ reward、AND state 用最小 return / 最长分支 | AP pp. 2–3、9 |
-| PUCT、$Q=\gamma^{-V-1}$、progressive sampling、AND selection | AP pp. 9–10 |
-| 单次 attempt 持续一棵 tree | AP p. 10 |
-| 300B pretrain、300k Lean SFT pairs、80M formal curriculum | AP pp. 3、10–11 |
-| 90% replay / 10% Mathlib、约 1M main-RL steps | AP p. 11 |
-| TTRL 变体生成、最多 15 次演化、数十万 variants | AP pp. 11–12 |
-| SFT / autoformalization / main-RL compute 数量级 | AP p. 11 |
+| 冻结 REAL-Prover 7B、LoRA session、policy generation | v1-result release source 的 gpu_runtime/real_backend.py |
+| shared hidden backbone 的 categorical head | gpu_runtime/verified_backend.py |
+| verified categorical label contract | gpu_runtime/verified_objective.py |
+| OR / AND trajectory return 构造 | cpu_runtime/verified_trajectory.py |
+| mixed replay + Mathlib learner | gpu_runtime/mixed_backend.py 与 mixed objective |
+| HTTP policy token logprobs / value route | V1 gpu_runtime runtime / server source |
+| Lean value consumer 的负号约定 | V1 CPU / Lean patch source |
 
-PDF 中引用但未附带的 Supplementary Tables 不能用来声称精确 bin 数、optimizer 或 search hyperparameters。
+release-time code archive 与本地 V1 source 文件 hash 对齐；因此这里可以同时引用源码和实际运行回执。
 
-## 公开 Reap 源码定位
+## V1 真实运行结果
 
-| 断言 | 公开工作树的定位 |
+| 结论 | evidence family |
 | --- | --- |
-| 持续 per-attempt tree、最终 replay / checkProof | new-v1-gather-source-code-cpu/reap-upstream/Reap/Tactic/TreeSearch.lean |
-| AND/OR、focused subgoals、min backup、PUCT、progressive sampling | 同一 TreeSearch.lean |
-| state key 是 pretty-printed goals 的 textual JSON；局部 merge | Reap/Tactic/State.lean 与 TreeSearch.lean |
-| Lean generator 请求并消费 token logprob | Reap/Tactic/Generator.lean |
-| 公开 server 未返回 OpenAI token logprobs，且可在无 checkpoint 下启动随机 scalar head | app/policy_server.py |
-| executable public head 是 Tanh scalar | app/value_head.py |
-| public wiki 声称 64-bin categorical head 与训练 state 数 | explain/wiki/07-model-and-value.md |
-| V1 driver 串行执行，sink 未接入 upstream MCTS | app/v1_run.py、app/v1_sink.py、lean-v1/Reap/Training/RolloutSink.lean |
-| public SFT 程序是 skeleton | app/train_sft.py |
+| 两次 V1 mixed joint updates | evidence/current/latest-release-gpu 的 step receipts |
+| 392 LoRA + 4 categorical head tensors changed | step receipt 的 parameter diff manifest |
+| base remains frozen | same receipt 的 base fingerprint checks |
+| R2 publication | checkpoint / release / weights metadata |
+| R2 fresh-service consumption | evidence/current/latest-recovery-gpu |
+| policy candidates 与 value 实际经 HTTP 返回 | recovery service intents / responses / report |
+| recovery run 通过 8 gates | latest-recovery-gpu report |
 
-源码定位说明当前公开 snapshot 的行为；不能反向证明历史 GPU 实验使用了同一条 server 或同一版本的 head。
+latest-release wrapper 的最终 transport failure 不会抹掉已经完成并有 receipt 的 step-2 release；后续 recovery 以 exact published release 完成独立消费验证。两者应一起报告，不能只摘取任一侧。
 
-## 历史 REAL-Prover 7B 记录定位
-
-| 断言 | 审计到的证据类别 |
-| --- | --- |
-| Pell 课程与最终 target 有独立 Lean 验收 | 2026-08-28 REAL-Prover Pell result package 的 README、proof receipt |
-| final target 在题内 online update 前完成 | 该 package 的 search online-result 和 results narrative |
-| LoRA + value 参数发生过改变 | success-learn receipts、release metadata |
-| 约 21 条 trajectory rows / 9 finalization receipts | 历史 receipts 汇总 |
-| categorical mixed / continual / central-learner 轨道存在 | evidence/current 的 release contract 与 training reports |
-| tensors 没有随 Git 导出 | weights index、evidence README、公开 VALUE_HEAD 文档 |
-
-这类记录适合证明“曾经发生过的受控实验”，不适合在没有 tensor artifact 的情况下执行当前 checkpoint load。
-
-## 断言规则
-
-发布或论文中每一个强断言应至少满足对应的证据门：
+## 断言门
 
 | 想说的话 | 最低证据 |
 | --- | --- |
-| 已训练 critic | checkpoint artifact + schema + training manifest + holdout critic evaluation |
-| search 使用 policy prior | server token-logprob golden test + Lean trace 的 non-uniform priors |
-| 已实现 main RL | actor→verified replay→learner→new actor 的端到端 trace，及持续 curriculum statistics |
-| TTRL 有收益 | 同预算 A/B/C/D paired experiment，target variants 的 manifest 与 leakage audit |
-| 模型解出 theorem | final independent Lean check receipt 和完整 proof |
+| V1 critic 已训练 | committed update / release receipt，且 LoRA 与 head parameter diffs 存在 |
+| V1 critic 可服务 | fresh-session load + policy/value HTTP consumption receipt |
+| V1 critic 有用 | theorem-level heldout calibration 和 value-on/off search ablation |
+| V1 优于 base | paired fixed-budget comparison |
+| V1 已达到 AlphaProof TTRL | target variants、focused RL、paired target results、规模报告 |
 
-若证据只达到较低一层，应降低措辞。例如，有 receipt 可以说“参数更新被记录”；没有 holdout 不应说“模型更强”。
+当前 V1 已满足前两行，不满足后三行。这个边界比“上传了模型”或“训练 loss 变化”更能保护实验结论。
